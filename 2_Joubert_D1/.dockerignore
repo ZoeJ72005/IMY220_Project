@@ -10,4 +10,3 @@ coverage
 .coverage
 Dockerfile
 .dockerignore
-frontend/public/dist

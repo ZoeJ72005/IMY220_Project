@@ -9,25 +9,11 @@
   margin: 0 auto;
 }
 
-.loading-container,
-.error-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 50vh;
-  font-family: 'Fira Code', monospace;
-  font-size: 16px;
-  color: var(--terminal-text);
-}
-
-.error-text {
-  color: var(--terminal-error);
-}
-
 .profile-container {
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 20px;
+  align-items: start;
 }
 
 .profile-sidebar {
@@ -35,18 +21,19 @@
   border: 2px solid var(--terminal-border);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
-  height: fit-content;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
   position: sticky;
-  top: 100px;
+  top: 80px;
 }
 
 .profile-main {
   background-color: var(--terminal-bg);
   border: 2px solid var(--terminal-border);
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-tabs {
@@ -59,12 +46,12 @@
   background: transparent;
   border: none;
   color: var(--terminal-text);
-  padding: 15px 20px;
+  padding: 12px 18px;
   font-family: 'Fira Code', monospace;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
   border-right: 1px solid var(--terminal-border);
+  transition: all 0.3s ease;
 }
 
 .tab-button:hover {
@@ -79,22 +66,19 @@
 
 .tab-content {
   padding: 20px;
-  min-height: 400px;
+  flex: 1;
+  position: relative;
 }
 
-.overview-content {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
+.tab-panel {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
-.section-title {
-  font-family: 'Fira Code', monospace;
-  font-size: 16px;
-  color: var(--terminal-accent);
-  margin-bottom: 15px;
-  border-bottom: 1px solid var(--terminal-dim);
-  padding-bottom: 8px;
+.tab-panel.visible {
+  display: block;
+  opacity: 1;
 }
 
 .activity-feed {
@@ -123,106 +107,12 @@
   color: var(--terminal-text);
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
-}
-
-.stat-card {
-  background-color: rgba(0, 17, 0, 0.3);
-  border: 1px solid var(--terminal-border);
-  border-radius: 8px;
-  padding: 20px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  border-color: var(--terminal-accent);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
-}
-
-.stat-value {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 24px;
-  color: var(--terminal-text);
-  margin-bottom: 5px;
-  text-shadow: 0 0 10px var(--terminal-text);
-}
-
-.stat-label {
-  font-family: 'Fira Code', monospace;
-  font-size: 10px;
-  color: var(--terminal-dim);
-  letter-spacing: 1px;
-}
-
-/* Responsive Design */
 @media (max-width: 1024px) {
   .profile-container {
     grid-template-columns: 1fr;
     gap: 15px;
   }
-  
   .profile-sidebar {
     position: static;
-  }
-}
-
-@media (max-width: 768px) {
-  .profile-content {
-    padding: 15px;
-  }
-  
-  .profile-tabs {
-    flex-wrap: wrap;
-  }
-  
-  .tab-button {
-    flex: 1;
-    min-width: 120px;
-    padding: 12px 15px;
-    font-size: 11px;
-  }
-  
-  .tab-content {
-    padding: 15px;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .profile-content {
-    padding: 10px;
-  }
-  
-  .profile-sidebar,
-  .profile-main {
-    padding: 15px;
-  }
-  
-  .tab-button {
-    padding: 10px 12px;
-    font-size: 10px;
-    min-width: 100px;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .activity-item {
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .activity-time {
-    min-width: auto;
-    font-size: 10px;
   }
 }

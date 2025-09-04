@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import ProfileComponent from '../components/ProfileComponent';
@@ -17,8 +17,8 @@ const ProfilePage = ({ user, onLogout }) => {
 
   const isOwnProfile = user.id.toString() === userId;
 
-  // Dummy profile data
-  const dummyProfile = {
+  // Make dummy profile stable using useMemo
+  const dummyProfile = useMemo(() => ({
     id: parseInt(userId),
     username: isOwnProfile ? user.username : 'code_master',
     email: isOwnProfile ? user.email : 'master@terminal.dev',
@@ -28,7 +28,7 @@ const ProfilePage = ({ user, onLogout }) => {
     joinDate: '2023-01-15',
     website: 'https://terminal-dev.io',
     company: 'Terminal Labs',
-    //profileImage: '/assets/images/profile-default.png',
+    profileImage: '/assets/images/profile-default.png',
     stats: {
       projects: 12,
       commits: 256,
@@ -42,38 +42,22 @@ const ProfilePage = ({ user, onLogout }) => {
       { id: 4, username: 'data_ninja', profileImage: '/assets/images/profile4.png' }
     ],
     projects: [
-      {
-        id: 1,
-        name: 'terminal-ui-framework',
-        description: 'A retro terminal-style UI framework',
-        role: 'owner',
-        lastActivity: '2 hours ago'
-      },
-      {
-        id: 2,
-        name: 'crypto-hash-validator',
-        description: 'Terminal-based cryptocurrency hash validation tool',
-        role: 'contributor',
-        lastActivity: '1 day ago'
-      }
+      { id: 1, name: 'terminal-ui-framework', description: 'A retro terminal-style UI framework', role: 'owner', lastActivity: '2 hours ago' },
+      { id: 2, name: 'crypto-hash-validator', description: 'Terminal-based cryptocurrency hash validation tool', role: 'contributor', lastActivity: '1 day ago' }
     ]
-  };
+  }), [user, userId, isOwnProfile]);
 
-useEffect(() => {
-  setLoading(true);
-  // Only set dummy data if userId changes
-  const timer = setTimeout(() => {
-    setProfileUser(dummyProfile);
-    setLoading(false);
-  }, 500);
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setProfileUser(dummyProfile);
+      setLoading(false);
+    }, 400);
 
-  return () => clearTimeout(timer);
-  // Only run when userId changes
-}, [userId]);
+    return () => clearTimeout(timer);
+  }, [dummyProfile]);
 
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
-  };
+  const handleEditToggle = () => setIsEditing(prev => !prev);
 
   const handleProfileUpdate = (updatedData) => {
     setProfileUser(prev => ({ ...prev, ...updatedData }));
@@ -84,24 +68,7 @@ useEffect(() => {
     return (
       <div className="profile-page">
         <Header user={user} onLogout={onLogout} />
-        <div className="loading-container">
-          <div className="loading-text">
-            Loading user profile<span className="cursor">_</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profileUser) {
-    return (
-      <div className="profile-page">
-        <Header user={user} onLogout={onLogout} />
-        <div className="error-container">
-          <div className="error-text">
-            ERROR: User profile not found
-          </div>
-        </div>
+        <div className="loading-container">Loading user profile...</div>
       </div>
     );
   }
@@ -109,10 +76,10 @@ useEffect(() => {
   return (
     <div className="profile-page">
       <Header user={user} onLogout={onLogout} />
-      
       <main className="profile-content">
         <div className="profile-container">
-          <div className="profile-sidebar">
+          {/* Sidebar */}
+          <aside className="profile-sidebar">
             {isEditing && isOwnProfile ? (
               <EditProfile
                 profile={profileUser}
@@ -127,102 +94,50 @@ useEffect(() => {
                 currentUser={user}
               />
             )}
-          </div>
-          
+          </aside>
+
+          {/* Main */}
           <div className="profile-main">
             <div className="profile-tabs">
-              <button
-                className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
-                onClick={() => setActiveTab('profile')}
-              >
-                &gt; OVERVIEW
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'projects' ? 'active' : ''}`}
-                onClick={() => setActiveTab('projects')}
-              >
-                &gt; PROJECTS
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'friends' ? 'active' : ''}`}
-                onClick={() => setActiveTab('friends')}
-              >
-                &gt; NETWORK
-              </button>
-              {isOwnProfile && (
-                <button
-                  className={`tab-button ${activeTab === 'create' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('create')}
-                >
-                  &gt; CREATE_PROJECT
-                </button>
-              )}
+              {['profile', 'projects', 'friends', 'create'].map(tab => (
+                (tab !== 'create' || isOwnProfile) && (
+                  <button
+                    key={tab}
+                    className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab.toUpperCase()}
+                  </button>
+                )
+              ))}
             </div>
-            
+
             <div className="tab-content">
-              {activeTab === 'profile' && (
-                <div className="overview-content">
-                  <div className="activity-section">
-                    <h3 className="section-title">&gt; RECENT_ACTIVITY</h3>
-                    <div className="activity-feed">
-                      <div className="activity-item">
-                        <span className="activity-time">2 hours ago</span>
-                        <span className="activity-text">Checked in to terminal-ui-framework</span>
-                      </div>
-                      <div className="activity-item">
-                        <span className="activity-time">1 day ago</span>
-                        <span className="activity-text">Created new project: retro-game-engine</span>
-                      </div>
-                      <div className="activity-item">
-                        <span className="activity-time">3 days ago</span>
-                        <span className="activity-text">Added friend: crypto_dev</span>
-                      </div>
+              {/* Keep all panels mounted, just toggle visibility */}
+              <div className={`tab-panel ${activeTab === 'profile' ? 'visible' : 'hidden'}`}>
+                <h3 className="section-title">Recent Activity</h3>
+                <div className="activity-feed">
+                  {profileUser.projects.slice(0, 3).map(p => (
+                    <div key={p.id} className="activity-item">
+                      <span className="activity-time">{p.lastActivity}</span>
+                      <span className="activity-text">{p.name}</span>
                     </div>
-                  </div>
-                  
-                  <div className="stats-section">
-                    <h3 className="section-title">&gt; STATISTICS</h3>
-                    <div className="stats-grid">
-                      <div className="stat-card">
-                        <div className="stat-value">{profileUser.stats.projects}</div>
-                        <div className="stat-label">PROJECTS</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-value">{profileUser.stats.commits}</div>
-                        <div className="stat-label">COMMITS</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-value">{profileUser.stats.friends}</div>
-                        <div className="stat-label">CONNECTIONS</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-value">{profileUser.stats.downloads}</div>
-                        <div className="stat-label">DOWNLOADS</div>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )}
-              
-              {activeTab === 'projects' && (
-                <ProjectList 
-                  projects={profileUser.projects} 
-                  isOwnProfile={isOwnProfile}
-                />
-              )}
-              
-              {activeTab === 'friends' && (
-                <FriendsList 
-                  friends={profileUser.friends} 
-                  isOwnProfile={isOwnProfile}
-                />
-              )}
-              
-              {activeTab === 'create' && isOwnProfile && (
-                <CreateProject 
-                  user={user}
-                  onProjectCreated={() => setActiveTab('projects')}
-                />
+              </div>
+
+              <div className={`tab-panel ${activeTab === 'projects' ? 'visible' : 'hidden'}`}>
+                <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
+              </div>
+
+              <div className={`tab-panel ${activeTab === 'friends' ? 'visible' : 'hidden'}`}>
+                <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
+              </div>
+
+              {isOwnProfile && (
+                <div className={`tab-panel ${activeTab === 'create' ? 'visible' : 'hidden'}`}>
+                  <CreateProject user={user} onProjectCreated={() => setActiveTab('projects')} />
+                </div>
               )}
             </div>
           </div>

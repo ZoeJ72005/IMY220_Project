@@ -38,7 +38,7 @@
 
 .status-indicator.online {
   background-color: var(--terminal-accent);
-  animation: pulse 2s infinite;
+
 }
 
 .profile-username {
