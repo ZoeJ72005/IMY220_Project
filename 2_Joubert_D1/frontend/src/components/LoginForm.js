@@ -152,7 +152,7 @@ const LoginForm = ({ onLogin }) => {
       </form>
       
       <div className="form-footer">
-        <p>Test Account: test@test.com / test1234</p>
+        <p>Test Account: master@terminal.dev / master456</p>
       </div>
     </div>
   );
