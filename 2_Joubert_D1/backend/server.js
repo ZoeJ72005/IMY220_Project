@@ -13,8 +13,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Serve static files
+// Serve static files from frontend/public
 app.use(express.static(path.join(__dirname, '../frontend/public')));
+
+// Serve bundle.js from dist
+app.use('/dist', express.static(path.join(__dirname, '../dist')));
 
 // Dummy data for stubbing
 const dummyUsers = [
@@ -84,7 +87,7 @@ app.post('/api/auth/signup', (req, res) => {
 
 // Catch-all handler for React routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/public/dist/index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/public/index.html'));
 });
 
 app.listen(PORT, () => {

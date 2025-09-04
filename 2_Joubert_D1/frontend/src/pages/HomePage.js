@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import Feed from '../components/Feed';
 import SearchInput from '../components/SearchInput';
-import './HomePage.css';
+//import './HomePage.css';
 
 const HomePage = ({ user, onLogout }) => {
   const [feedType, setFeedType] = useState('local'); // 'local' or 'global'
