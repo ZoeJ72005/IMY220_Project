@@ -18,7 +18,7 @@ const Header = ({ user, onLogout }) => {
         <div className="nav-brand">
           <Link to="/home" className="brand-link">
             <span className="brand-icon">&gt;_</span>
-            <span className="brand-text">TERMINAL/VCS</span>
+            <span className="brand-text">C:CodeRepo</span>
           </Link>
         </div>
         

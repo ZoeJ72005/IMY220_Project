@@ -9,17 +9,16 @@ const SplashPage = ({ onLogin }) => {
   const [showForms, setShowForms] = useState(false);
 
   const welcomeText = `
-> Initializing Terminal/VCS v2.0...
+> Initializing C:CodeRepo v2.0...
 > Loading secure version control system...
 > Welcome to the future of collaborative coding
 > 
-> TERMINAL/VCS - Where Code Lives Forever
+> C:CodeRepo - Where Code Lives Forever
 > ================================
 > 
 > A retro-style version control platform
 > for the modern developer
-> 
-> Press ENTER to continue...`;
+> `;
 
   useEffect(() => {
     let index = 0;
@@ -45,7 +44,7 @@ const SplashPage = ({ onLogin }) => {
             <span className="control yellow"></span>
             <span className="control green"></span>
           </div>
-          <div className="terminal-title">Terminal/VCS v2.0</div>
+          <div className="terminal-title">C:CodeRepo v2.0</div>
         </div>
         
         <div className="terminal-content">
@@ -84,7 +83,7 @@ const SplashPage = ({ onLogin }) => {
         
         <div className="terminal-footer">
           <div className="brand-info">
-            <h1 className="brand-name">TERMINAL/VCS</h1>
+            <h1 className="brand-name">C:CodeRepo</h1>
             <p className="tagline">Secure • Collaborative • Retro-Style</p>
             <div className="features">
               <span>✓ Version Control</span>

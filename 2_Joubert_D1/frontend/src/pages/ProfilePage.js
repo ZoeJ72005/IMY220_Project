@@ -28,7 +28,7 @@ const ProfilePage = ({ user, onLogout }) => {
     joinDate: '2023-01-15',
     website: 'https://terminal-dev.io',
     company: 'Terminal Labs',
-    profileImage: '/assets/images/profile-default.png',
+    //profileImage: '/assets/images/profile-default.png',
     stats: {
       projects: 12,
       commits: 256,
@@ -59,14 +59,17 @@ const ProfilePage = ({ user, onLogout }) => {
     ]
   };
 
-  useEffect(() => {
-    // Simulate API call to fetch profile data
-    setLoading(true);
-    setTimeout(() => {
-      setProfileUser(dummyProfile);
-      setLoading(false);
-    }, 500);
-  }, [userId]);
+useEffect(() => {
+  setLoading(true);
+  // Only set dummy data if userId changes
+  const timer = setTimeout(() => {
+    setProfileUser(dummyProfile);
+    setLoading(false);
+  }, 500);
+
+  return () => clearTimeout(timer);
+  // Only run when userId changes
+}, [userId]);
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);

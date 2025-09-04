@@ -60,19 +60,49 @@ body {
 }
 
 .terminal-button {
-  background-color: transparent;
+  background: linear-gradient(135deg, rgba(0, 17, 0, 0.4), rgba(0, 17, 0, 0.2));
   color: var(--terminal-text);
-  border: 1px solid var(--terminal-text);
-  padding: 8px 16px;
+  border: 2px solid var(--terminal-text);
+  padding: 12px 18px;
   font-family: 'Fira Code', monospace;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.4), transparent);
+  transition: left 0.5s ease;
 }
 
 .terminal-button:hover {
-  background-color: var(--terminal-button-hover);
-  box-shadow: 0 0 10px var(--terminal-text);
+  background: linear-gradient(135deg, rgba(0, 25, 0, 0.6), rgba(0, 25, 0, 0.4));
+  box-shadow: 
+    0 0 20px var(--terminal-text),
+    inset 0 0 20px rgba(0, 255, 0, 0.1);
+  border-color: var(--terminal-accent);
+  color: var(--terminal-accent);
+  transform: translateY(-1px);
+}
+
+.terminal-button:hover::before {
+  left: 100%;
+}
+
+.terminal-button:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 0 10px var(--terminal-text),
+    inset 0 0 15px rgba(0, 0, 0, 0.3);
 }
 
 .terminal-input {

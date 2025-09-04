@@ -10,7 +10,6 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in (from localStorage or cookies)
     const storedUser = localStorage.getItem('terminal_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
