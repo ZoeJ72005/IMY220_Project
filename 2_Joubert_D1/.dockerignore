@@ -1,0 +1,30 @@
+# Node modules (don't copy to Docker)
+node_modules
+**/node_modules
+
+# Build output
+dist
+build
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# IDE/editor configs
+.vscode
+.idea
+*.swp
