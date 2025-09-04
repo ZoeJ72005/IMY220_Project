@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProjectPreview from './ProjectPreview';
-//import './Feed.css';
+import './Feed.css';
 
 const Feed = ({ feedType, user }) => {
   const [projects, setProjects] = useState([]);

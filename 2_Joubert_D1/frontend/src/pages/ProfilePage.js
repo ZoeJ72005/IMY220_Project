@@ -6,7 +6,7 @@ import EditProfile from '../components/EditProfile';
 import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
-//import './ProfilePage.css';
+import './ProfilePage.css';
 
 const ProfilePage = ({ user, onLogout }) => {
   const { userId } = useParams();

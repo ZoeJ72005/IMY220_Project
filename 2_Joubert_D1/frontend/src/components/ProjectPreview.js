@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-//import './ProjectPreview.css';
+import './ProjectPreview.css';
 
 const ProjectPreview = ({ project, currentUser }) => {
   const getStatusColor = (status) => {

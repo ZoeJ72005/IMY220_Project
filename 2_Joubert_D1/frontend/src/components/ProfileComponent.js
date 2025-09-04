@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-//import './ProfileComponent.css';
+import './ProfileComponent.css';
 
 const ProfileComponent = ({ profile, isOwnProfile, onEdit, currentUser }) => {
   const formatDate = (dateString) => {
