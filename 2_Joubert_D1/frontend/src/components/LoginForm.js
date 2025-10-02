@@ -154,7 +154,7 @@ const LoginForm = ({ onLogin }) => {
       </form>
       
       <div className="text-terminal-dim text-xs text-center pt-2 border-t border-terminal-dim/50">
-        <p>Test Account: master@terminal.dev / master456</p>
+        <p> </p>
       </div>
     </div>
   );

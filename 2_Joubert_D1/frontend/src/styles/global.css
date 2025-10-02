@@ -2,11 +2,11 @@
 
 :root {
   --terminal-bg: #000000;
-  --terminal-text: #00ff00;
-  --terminal-accent: #00aa00;
-  --terminal-dim: #008800;
-  --terminal-error: #ff0000;
-  --terminal-warning: #ffff00;
+  --terminal-text: #00ff00; /* Pure Green Text */
+  --terminal-accent: #00aa00; /* Slightly Dimmed Green */
+  --terminal-dim: #008800; /* Very Dim Green */
+  --terminal-error: #ff0000; /* Red for errors */
+  --terminal-warning: #ffff00; /* Yellow/Amber for warnings */
   --terminal-border: #00ff00;
   --terminal-input-bg: #001100;
   --terminal-button-hover: #003300;
@@ -37,40 +37,25 @@ body {
   51%, 100% { opacity: 0; }
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100vh); }
-  100% { transform: translateY(100vh); }
-}
-
-@keyframes flicker {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.98; }
-}
+/* Removed unused @keyframes scanline and flicker for cleaner code */
 
 .cursor {
   animation: blink 1s infinite;
 }
 
-.terminal-glow {
-  text-shadow: 0 0 10px var(--terminal-text);
-}
-
-.terminal-border {
-  border: 1px solid var(--terminal-border);
-}
-
 .terminal-button {
+  /* Applying linear gradient hover effects directly using custom CSS 
+     because complex gradients/shadows are easier here than in pure Tailwind */
   background: linear-gradient(135deg, rgba(0, 17, 0, 0.4), rgba(0, 17, 0, 0.2));
   color: var(--terminal-text);
   border: 2px solid var(--terminal-text);
-  padding: 12px 18px;
   font-family: 'Fira Code', monospace;
-  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 6px;
   position: relative;
   overflow: hidden;
+  /* Tailwind classes handle padding, font-size, and width based on context */
 }
 
 .terminal-button::before {
@@ -109,89 +94,12 @@ body {
   background-color: var(--terminal-input-bg);
   border: 1px solid var(--terminal-text);
   color: var(--terminal-text);
-  padding: 8px 12px;
   font-family: 'Fira Code', monospace;
-  font-size: 14px;
 }
 
 .terminal-input:focus {
   outline: none;
   box-shadow: 0 0 10px var(--terminal-text);
-}
-
-.terminal-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: var(--terminal-bg);
-}
-
-.loading-text {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 18px;
-  color: var(--terminal-text);
-}
-
-/* Form Styles */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--terminal-text);
-  font-size: 14px;
-}
-
-.form-input {
-  width: 100%;
-  background-color: var(--terminal-input-bg);
-  border: 1px solid var(--terminal-text);
-  color: var(--terminal-text);
-  padding: 10px;
-  font-family: 'Fira Code', monospace;
-  font-size: 14px;
-}
-
-.form-input:focus {
-  outline: none;
-  box-shadow: 0 0 10px var(--terminal-text);
   border-color: var(--terminal-accent);
 }
-
-.error-message {
-  color: var(--terminal-error);
-  font-size: 12px;
-  margin-top: 5px;
-}
-
-.success-message {
-  color: var(--terminal-text);
-  font-size: 12px;
-  margin-top: 5px;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  body {
-    font-size: 12px;
-  }
-  
-  .terminal-button {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  
-  .form-input {
-    font-size: 12px;
-    padding: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  body {
-    font-size: 11px;
-  }
-}
+/* Removed individual form classes as Tailwind handles them inline */
