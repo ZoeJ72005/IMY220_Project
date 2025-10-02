@@ -85,22 +85,23 @@ const LoginForm = ({ onLogin }) => {
   };
 
   return (
-    <div className="login-form">
-      <h3 className="form-title">
+    <div className="font-fira-code space-y-4">
+      <h3 className="text-lg text-terminal-accent font-bold">
         &gt; ACCESS TERMINAL_
-        <span className="cursor">_</span>
+        <span className="cursor animate-blink">_</span>
       </h3>
       
       {errors.general && (
-        <div className="error-message terminal-error">
+        <div className="text-terminal-error text-xs p-2 border border-terminal-error">
           ERROR: {errors.general}
         </div>
       )}
       
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('login-email')}
           >
             &gt; EMAIL_ADDRESS:
@@ -116,13 +117,14 @@ const LoginForm = ({ onLogin }) => {
             required
           />
           {errors.email && (
-            <div className="error-message">ERROR: {errors.email}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.email}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Password */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('login-password')}
           >
             &gt; PASSWORD:
@@ -138,20 +140,20 @@ const LoginForm = ({ onLogin }) => {
             required
           />
           {errors.password && (
-            <div className="error-message">ERROR: {errors.password}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.password}</div>
           )}
         </div>
 
         <button
           type="submit"
-          className="terminal-button submit-btn"
+          className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-text border border-terminal-text w-full mt-6"
           disabled={isLoading}
         >
           {isLoading ? 'ACCESSING...' : '&gt; LOGIN'}
         </button>
       </form>
       
-      <div className="form-footer">
+      <div className="text-terminal-dim text-xs text-center pt-2 border-t border-terminal-dim/50">
         <p>Test Account: master@terminal.dev / master456</p>
       </div>
     </div>
