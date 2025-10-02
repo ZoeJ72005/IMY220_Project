@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProjectPreview from './ProjectPreview';
-import '../styles/Feed.css';
+
 
 const Feed = ({ feedType, user }) => {
   const [projects, setProjects] = useState([]);
@@ -32,28 +32,28 @@ const Feed = ({ feedType, user }) => {
 
   if (loading) {
     return (
-      <div className="feed-loading">
-        <div className="loading-spinner">
+      <div className="flex justify-center items-center h-52">
+        <div className="font-fira-code text-sm text-terminal-text text-center">
           <span>Loading feed data</span>
-          <span className="cursor">_</span>
+          <span className="cursor animate-blink">_</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="feed">
-      <div className="feed-header">
-        <div className="feed-stats">
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 pb-2.5 border-b border-terminal-dim">
+        <div className="font-fira-code text-xs text-terminal-accent">
           <span className="stat">
             Found {projects.length} projects
           </span>
         </div>
         
-        <div className="feed-sort">
-          <span className="sort-label">SORT_BY:</span>
+        <div className="flex items-center gap-2.5 font-fira-code text-xs w-full sm:w-auto justify-between sm:justify-start mt-2 sm:mt-0">
+          <span className="text-terminal-text">SORT_BY:</span>
           <select 
-            className="sort-select terminal-input"
+            className="bg-terminal-input-bg border border-terminal-text text-terminal-text font-fira-code text-[11px] p-1.5 focus:outline-none focus:shadow-[0_0_5px_var(--terminal-text)]"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -63,11 +63,11 @@ const Feed = ({ feedType, user }) => {
         </div>
       </div>
       
-      <div className="projects-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {projects.length === 0 ? (
-          <div className="no-projects">
-            <p>No projects found in {feedType} feed</p>
-            <p className="help-text">
+          <div className="md:col-span-2 xl:col-span-3 text-center p-10 border-2 border-dashed border-terminal-dim rounded-xl bg-terminal-bg/5 shadow-[inset_0_0_20px_rgba(0,0,0,0.3),_0_0_15px_rgba(0,255,0,0.1)]">
+            <p className="font-fira-code text-terminal-text mb-2.5">No projects found in {feedType} feed</p>
+            <p className="text-xs text-terminal-dim">
               {feedType === 'local' 
                 ? 'Connect with other users to see their projects' 
                 : 'Check back later for new projects'

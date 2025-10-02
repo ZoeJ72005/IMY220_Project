@@ -6,8 +6,7 @@ import EditProfile from '../components/EditProfile';
 import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
-import '../styles/ProfilePage.css';
-
+// Removed: import '../styles/ProfilePage.css';=
 const ProfilePage = ({ user, onLogout }) => {
   const { userId } = useParams();
   const [profileUser, setProfileUser] = useState(null);
@@ -17,24 +16,24 @@ const ProfilePage = ({ user, onLogout }) => {
 
   const isOwnProfile = user.id.toString() === userId;
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(`/api/users/${userId}`);
-            const data = await response.json();
-            if (data.success) {
-                setProfileUser(data.profile);
-            } else {
-                console.error(data.message);
-            }
-        } catch (error) {
-            console.error('Error fetching profile:', error);
-        } finally {
-            setLoading(false);
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const data = await response.json();
+        if (data.success) {
+            setProfileUser(data.profile);
+        } else {
+            console.error(data.message);
         }
-    };
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+    } finally {
+        setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProfile();
   }, [userId]);
 
@@ -52,7 +51,9 @@ const ProfilePage = ({ user, onLogout }) => {
         const data = await response.json();
 
         if (data.success) {
-            setProfileUser(data.profile);
+            // Note: Since the backend returns the MongoDB user document which might not be fully populated,
+            // we re-fetch the entire profile to ensure consistency.
+            fetchProfile(); 
             setIsEditing(false);
         } else {
             console.error('Error updating profile:', data.message);
@@ -64,20 +65,27 @@ const ProfilePage = ({ user, onLogout }) => {
 
   if (loading || !profileUser) {
     return (
-      <div className="profile-page">
+      <div className="min-h-screen bg-terminal-bg flex items-center justify-center">
         <Header user={user} onLogout={onLogout} />
-        <div className="loading-container">Loading user profile...</div>
+        <div className="text-terminal-text text-lg font-share-tech-mono">
+          Loading user profile...<span className="cursor animate-blink">_</span>
+        </div>
       </div>
     );
   }
 
+  const tabClass = (tab) => `
+    px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out
+    ${activeTab === tab ? 'bg-terminal-text text-terminal-bg' : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent'}
+  `;
+
   return (
-    <div className="profile-page">
+    <div className="bg-terminal-bg min-h-screen">
       <Header user={user} onLogout={onLogout} />
-      <main className="profile-content">
-        <div className="profile-container">
+      <main className="p-5 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-5 items-start">
           {/* Sidebar */}
-          <aside className="profile-sidebar">
+          <aside className="bg-terminal-bg border-2 border-terminal-border rounded-lg p-5 shadow-[0_0_10px_rgba(0,255,0,0.1)] sticky top-20">
             {isEditing && isOwnProfile ? (
               <EditProfile
                 profile={profileUser}
@@ -95,45 +103,48 @@ const ProfilePage = ({ user, onLogout }) => {
           </aside>
 
           {/* Main */}
-          <div className="profile-main">
-            <div className="profile-tabs">
+          <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.1)] min-h-[400px] flex flex-col">
+            <div className="flex bg-terminal-dim border-b border-terminal-border">
               {['profile', 'projects', 'friends', 'create'].map(tab => (
                 (tab !== 'create' || isOwnProfile) && (
                   <button
                     key={tab}
-                    className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                    className={tabClass(tab)}
                     onClick={() => setActiveTab(tab)}
                   >
-                    {tab.toUpperCase()}
+                    &gt; {tab.toUpperCase()}
                   </button>
                 )
               ))}
             </div>
 
-            <div className="tab-content">
-              {/* Keep all panels mounted, just toggle visibility */}
-              <div className={`tab-panel ${activeTab === 'profile' ? 'visible' : 'hidden'}`}>
-                <h3 className="section-title">Recent Activity</h3>
-                <div className="activity-feed">
+            <div className="p-5 flex-1 relative">
+              {/* Profile/Activity Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'profile' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
+                <h3 className="text-sm font-bold text-terminal-accent mb-4">RECENT_ACTIVITY</h3>
+                <div className="flex flex-col gap-3">
                   {profileUser.projects.slice(0, 3).map(p => (
-                    <div key={p.id} className="activity-item">
-                      <span className="activity-time">{p.lastActivity}</span>
-                      <span className="activity-text">{p.name}</span>
+                    <div key={p.id} className="flex gap-4 p-2.5 bg-[rgba(0,17,0,0.3)] border border-terminal-dim rounded font-fira-code text-xs">
+                      <span className="text-terminal-dim min-w-[80px]">{p.lastActivity}</span>
+                      <span className="text-terminal-text">{p.name}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className={`tab-panel ${activeTab === 'projects' ? 'visible' : 'hidden'}`}>
+              {/* Projects Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'projects' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                 <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
               </div>
 
-              <div className={`tab-panel ${activeTab === 'friends' ? 'visible' : 'hidden'}`}>
+              {/* Friends Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'friends' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                 <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
               </div>
 
+              {/* Create Project Tab */}
               {isOwnProfile && (
-                <div className={`tab-panel ${activeTab === 'create' ? 'visible' : 'hidden'}`}>
+                <div className={`transition-opacity duration-250 ${activeTab === 'create' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                   <CreateProject user={user} onProjectCreated={() => setActiveTab('projects')} />
                 </div>
               )}

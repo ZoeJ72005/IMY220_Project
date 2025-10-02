@@ -1,54 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProjectComponent from '../components/ProjectComponent';
 import FilesComponent from '../components/FilesComponent';
 import MessagesComponent from '../components/MessagesComponent';
 import EditProject from '../components/EditProject';
+// No external CSS import needed
 
 const ProjectPage = ({ user, onLogout }) => {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState('');
+
+  const fetchProject = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}`);
+      const data = await response.json();
+      if (data.success) {
+        setProject(data.project);
+      } else {
+        console.error(data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProject = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/projects/${projectId}`);
-        const data = await response.json();
-        if (data.success) {
-          setProject(data.project);
-        } else {
-          console.error(data.message);
-        }
-      } catch (error) {
-        console.error('Error fetching project:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchProject();
   }, [projectId]);
 
   const isOwner = project && project.owner === user.username;
   const isMember = project && project.members.includes(user.username);
-
-  if (loading || !project) {
-    return (
-      <div className="project-page">
-        <Header user={user} onLogout={onLogout} />
-        <div className="loading-container">
-          <div className="loading-text">
-            Loading project data<span className="cursor">_</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleEditToggle = () => setIsEditing(prev => !prev);
   
@@ -56,13 +46,10 @@ const ProjectPage = ({ user, onLogout }) => {
     try {
         const response = await fetch(`/api/projects/${project.id}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedData),
         });
         const data = await response.json();
-
         if (data.success) {
             setProject(prev => ({ ...prev, ...updatedData }));
             setIsEditing(false);
@@ -74,14 +61,86 @@ const ProjectPage = ({ user, onLogout }) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (window.confirm('WARNING: Are you sure you want to delete this project? This action is permanent.')) {
+        try {
+            const response = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                alert('Project deleted successfully.');
+                navigate('/home'); 
+            } else {
+                alert('Error deleting project: ' + data.message);
+            }
+        } catch (error) {
+            alert('Network error during project deletion.');
+        }
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+        const response = await fetch(`/api/projects/${project.id}/checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Project checked out successfully.');
+            fetchProject(); // Re-fetch to update status
+        } else {
+            alert('Checkout failed: ' + data.message);
+        }
+    } catch (error) {
+        alert('Network error during checkout.');
+    }
+  };
+
+  const handleCheckin = async () => {
+    if (!checkoutMessage) {
+      alert('Please provide a check-in message describing your changes.');
+      return;
+    }
+    try {
+        const response = await fetch(`/api/projects/${project.id}/checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, message: checkoutMessage }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Project checked in successfully.');
+            setCheckoutMessage('');
+            fetchProject(); // Re-fetch to update status
+            setActiveTab('activity'); // View new activity
+        } else {
+            alert('Check-in failed: ' + data.message);
+        }
+    } catch (error) {
+        alert('Network error during check-in.');
+    }
+  };
+
+  if (loading || !project) {
+    return (
+      <div className="min-h-screen bg-terminal-bg flex items-center justify-center">
+        <Header user={user} onLogout={onLogout} />
+        <div className="text-terminal-text text-lg font-share-tech-mono">
+          Loading project data<span className="cursor animate-blink">_</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="project-page">
+    <div className="bg-terminal-bg min-h-screen">
       <Header user={user} onLogout={onLogout} />
       
-      <main className="project-content">
-        <div className="project-container">
-          <div className="project-sidebar">
+      <main className="p-5 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-5 items-start">
+          {/* Project Sidebar */}
+          <aside className="bg-terminal-bg border-2 border-terminal-border rounded-lg p-5 shadow-[0_0_10px_rgba(0,255,0,0.1)] sticky top-20">
             {isEditing && isOwner ? (
               <EditProject
                 project={project}
@@ -95,68 +154,84 @@ const ProjectPage = ({ user, onLogout }) => {
                 isMember={isMember}
                 currentUser={user}
                 onEdit={handleEditToggle}
+                onDelete={handleDelete}
+                onCheckout={handleCheckout}
+                onCheckin={handleCheckin}
               />
             )}
-          </div>
+          </aside>
           
-          <div className="project-main">
-            <div className="project-tabs">
-              <button
-                className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-                onClick={() => setActiveTab('overview')}
-              >
-                &gt; OVERVIEW
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'files' ? 'active' : ''}`}
-                onClick={() => setActiveTab('files')}
-              >
-                &gt; FILES
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'activity' ? 'active' : ''}`}
-                onClick={() => setActiveTab('activity')}
-              >
-                &gt; ACTIVITY
-              </button>
+          {/* Project Main Content */}
+          <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.1)] min-h-[400px] flex flex-col">
+            <div className="flex bg-terminal-dim border-b border-terminal-border">
+              {['overview', 'files', 'activity'].map(tab => (
+                <button
+                  key={tab}
+                  className={`px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out ${activeTab === tab ? 'bg-terminal-text text-terminal-bg' : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent'}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  &gt; {tab.toUpperCase()}
+                </button>
+              ))}
             </div>
             
-            <div className="tab-content">
-              {activeTab === 'overview' && (
-                <div className="overview-content">
-                  <h2 className="project-title">{project.name}</h2>
-                  <p className="project-description">{project.description}</p>
-                  <div className="project-stats-grid">
-                    <div className="stat-item">
-                      <span className="stat-label">VERSION:</span>
-                      <span className="stat-value">{project.version}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">DOWNLOADS:</span>
-                      <span className="stat-value">{project.downloads}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">MEMBERS:</span>
-                      <span className="stat-value">{project.members.length}</span>
-                    </div>
+            <div className="p-5 flex-1 relative">
+              
+              {/* Overview Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'overview' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
+                <h2 className="text-lg font-bold mb-2 text-terminal-text">{project.name}</h2>
+                <p className="text-terminal-dim mb-6">{project.description}</p>
+                <div className="grid grid-cols-3 gap-5 border border-terminal-dim p-4">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim">VERSION:</span>
+                    <span className="text-base text-terminal-text">{project.version}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim">DOWNLOADS:</span>
+                    <span className="text-base text-terminal-text">{project.downloads}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim">MEMBERS:</span>
+                    <span className="text-base text-terminal-text">{project.members.length}</span>
                   </div>
                 </div>
-              )}
+              </div>
               
-              {activeTab === 'files' && (
+              {/* Files Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'files' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                 <FilesComponent 
                   files={project.files} 
                   canEdit={isMember}
                   checkoutStatus={project.checkoutStatus}
                 />
-              )}
+              </div>
               
-              {activeTab === 'activity' && (
+              {/* Activity Tab */}
+              <div className={`transition-opacity duration-250 ${activeTab === 'activity' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                 <MessagesComponent 
                   messages={project.activity}
                   canAddMessage={isMember}
                 />
-              )}
+
+                {isMember && project.checkoutStatus === 'checked-out' && project.checkedOutBy === user.username && (
+                    <div className="mt-8 p-4 border border-terminal-warning rounded-lg bg-terminal-input-bg">
+                        <h4 className="text-terminal-warning mb-3">&gt; CHECKIN_MESSAGE:</h4>
+                        <textarea
+                            className="terminal-input w-full p-2 text-sm"
+                            rows="2"
+                            value={checkoutMessage}
+                            onChange={(e) => setCheckoutMessage(e.target.value)}
+                            placeholder="Describe your changes before checking in..."
+                        />
+                        <button 
+                            onClick={handleCheckin} 
+                            className="terminal-button mt-3 w-full bg-terminal-accent/20 border-terminal-accent text-terminal-accent"
+                        >
+                            COMMIT & CHECKIN
+                        </button>
+                    </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
