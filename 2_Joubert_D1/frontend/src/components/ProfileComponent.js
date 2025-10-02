@@ -1,5 +1,5 @@
 import React from 'react';
-import './ProfileComponent.css';
+import '../styles/ProfileComponent.css';
 
 const ProfileComponent = ({ profile, isOwnProfile, onEdit }) => {
   const formatDate = date => new Date(date).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });

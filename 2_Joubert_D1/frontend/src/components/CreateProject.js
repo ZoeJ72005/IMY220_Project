@@ -69,12 +69,27 @@ const CreateProject = ({ user, onProjectCreated }) => {
 
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Project created:', formData);
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...formData, ownerId: user.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        onProjectCreated();
+      } else {
+        setErrors({ general: data.message });
+      }
+    } catch (error) {
+      setErrors({ general: 'Network error. Please try again.' });
+    } finally {
       setIsSubmitting(false);
-      onProjectCreated();
-    }, 1000);
+    }
   };
 
   const handleLabelClick = (inputName) => {
@@ -91,6 +106,12 @@ const CreateProject = ({ user, onProjectCreated }) => {
         <span className="cursor">_</span>
       </h3>
       
+      {errors.general && (
+        <div className="error-message terminal-error">
+          ERROR: {errors.general}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label 

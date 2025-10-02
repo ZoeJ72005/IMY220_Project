@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './SearchInput.css';
+import '../styles/SearchInput.css';
 
 const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
   const [searchTerm, setSearchTerm] = useState('');

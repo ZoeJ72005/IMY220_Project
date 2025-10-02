@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import ProfileComponent from '../components/ProfileComponent';
@@ -6,7 +6,7 @@ import EditProfile from '../components/EditProfile';
 import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
-import './ProfilePage.css';
+import '../styles/ProfilePage.css';
 
 const ProfilePage = ({ user, onLogout }) => {
   const { userId } = useParams();
@@ -17,54 +17,52 @@ const ProfilePage = ({ user, onLogout }) => {
 
   const isOwnProfile = user.id.toString() === userId;
 
-  // Make dummy profile stable using useMemo
-  const dummyProfile = useMemo(() => ({
-    id: parseInt(userId),
-    username: isOwnProfile ? user.username : 'code_master',
-    email: isOwnProfile ? user.email : 'master@terminal.dev',
-    fullName: 'Terminal Code Master',
-    bio: 'Full-stack developer passionate about retro computing and terminal interfaces',
-    location: 'Cyberspace',
-    joinDate: '2023-01-15',
-    website: 'https://terminal-dev.io',
-    company: 'Terminal Labs',
-    profileImage: '/assets/images/profile-default.png',
-    stats: {
-      projects: 12,
-      commits: 256,
-      friends: 42,
-      downloads: 1337
-    },
-    languages: ['JavaScript', 'Python', 'C++', 'Rust', 'Shell'],
-    friends: [
-      { id: 2, username: 'crypto_dev', profileImage: '/assets/images/profile2.png' },
-      { id: 3, username: 'game_wizard', profileImage: '/assets/images/profile3.png' },
-      { id: 4, username: 'data_ninja', profileImage: '/assets/images/profile4.png' }
-    ],
-    projects: [
-      { id: 1, name: 'terminal-ui-framework', description: 'A retro terminal-style UI framework', role: 'owner', lastActivity: '2 hours ago' },
-      { id: 2, name: 'crypto-hash-validator', description: 'Terminal-based cryptocurrency hash validation tool', role: 'contributor', lastActivity: '1 day ago' }
-    ]
-  }), [user, userId, isOwnProfile]);
-
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      setProfileUser(dummyProfile);
-      setLoading(false);
-    }, 400);
+    const fetchProfile = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/users/${userId}`);
+            const data = await response.json();
+            if (data.success) {
+                setProfileUser(data.profile);
+            } else {
+                console.error(data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    return () => clearTimeout(timer);
-  }, [dummyProfile]);
+    fetchProfile();
+  }, [userId]);
 
   const handleEditToggle = () => setIsEditing(prev => !prev);
 
-  const handleProfileUpdate = (updatedData) => {
-    setProfileUser(prev => ({ ...prev, ...updatedData }));
-    setIsEditing(false);
+  const handleProfileUpdate = async (updatedData) => {
+    try {
+        const response = await fetch(`/api/users/${user.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedData),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            setProfileUser(data.profile);
+            setIsEditing(false);
+        } else {
+            console.error('Error updating profile:', data.message);
+        }
+    } catch (error) {
+        console.error('Network error during profile update:', error);
+    }
   };
 
-  if (loading) {
+  if (loading || !profileUser) {
     return (
       <div className="profile-page">
         <Header user={user} onLogout={onLogout} />

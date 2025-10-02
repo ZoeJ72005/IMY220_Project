@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import SignUpForm from '../components/SignUpForm';
-import './SplashPage.css';
+import '../styles/SplashPage.css';
 
 const SplashPage = ({ onLogin }) => {
   const [showLogin, setShowLogin] = useState(true);

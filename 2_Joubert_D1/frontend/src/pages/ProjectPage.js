@@ -13,47 +13,31 @@ const ProjectPage = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Dummy project data
-  const dummyProject = {
-    id: parseInt(projectId),
-    name: "terminal-ui-framework",
-    description: "A retro terminal-style UI framework built with React and CSS",
-    owner: "code_master",
-    tags: ["javascript", "react", "css", "framework"],
-    type: "web-application",
-    version: "v2.1.0",
-    createdDate: "2023-01-15",
-    lastActivity: "2 hours ago",
-    checkoutStatus: "checked-in",
-    checkedOutBy: null,
-    members: ["code_master", "terminal_user", "ui_designer"],
-    downloads: 127,
-    image: "/assets/images/project1.png",
-    files: [
-      { id: 1, name: "package.json", size: "2.3 KB", modified: "2 hours ago" },
-      { id: 2, name: "src/App.js", size: "15.7 KB", modified: "3 hours ago" },
-      { id: 3, name: "src/styles/terminal.css", size: "8.9 KB", modified: "1 day ago" },
-      { id: 4, name: "README.md", size: "4.2 KB", modified: "2 days ago" }
-    ],
-    messages: [
-      { id: 1, user: "code_master", action: "checked-in", message: "Added responsive design features", time: "2 hours ago" },
-      { id: 2, user: "terminal_user", action: "checked-out", message: "Working on mobile layout improvements", time: "4 hours ago" },
-      { id: 3, user: "ui_designer", action: "checked-in", message: "Updated color scheme and typography", time: "1 day ago" }
-    ]
-  };
-
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setProject(dummyProject);
-      setLoading(false);
-    }, 500);
+    const fetchProject = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/projects/${projectId}`);
+        const data = await response.json();
+        if (data.success) {
+          setProject(data.project);
+        } else {
+          console.error(data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching project:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProject();
   }, [projectId]);
 
   const isOwner = project && project.owner === user.username;
-  const isMember = project && (project.members.includes(user.username) || isOwner);
+  const isMember = project && project.members.includes(user.username);
 
-  if (loading) {
+  if (loading || !project) {
     return (
       <div className="project-page">
         <Header user={user} onLogout={onLogout} />
@@ -66,18 +50,30 @@ const ProjectPage = ({ user, onLogout }) => {
     );
   }
 
-  if (!project) {
-    return (
-      <div className="project-page">
-        <Header user={user} onLogout={onLogout} />
-        <div className="error-container">
-          <div className="error-text">
-            ERROR: Project not found
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleEditToggle = () => setIsEditing(prev => !prev);
+  
+  const handleProjectUpdate = async (updatedData) => {
+    try {
+        const response = await fetch(`/api/projects/${project.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedData),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            setProject(prev => ({ ...prev, ...updatedData }));
+            setIsEditing(false);
+        } else {
+            console.error('Error updating project:', data.message);
+        }
+    } catch (error) {
+        console.error('Network error during project update:', error);
+    }
+  };
+
 
   return (
     <div className="project-page">
@@ -89,11 +85,8 @@ const ProjectPage = ({ user, onLogout }) => {
             {isEditing && isOwner ? (
               <EditProject
                 project={project}
-                onSave={(updatedData) => {
-                  setProject(prev => ({ ...prev, ...updatedData }));
-                  setIsEditing(false);
-                }}
-                onCancel={() => setIsEditing(false)}
+                onSave={handleProjectUpdate}
+                onCancel={handleEditToggle}
               />
             ) : (
               <ProjectComponent
@@ -101,7 +94,7 @@ const ProjectPage = ({ user, onLogout }) => {
                 isOwner={isOwner}
                 isMember={isMember}
                 currentUser={user}
-                onEdit={() => setIsEditing(true)}
+                onEdit={handleEditToggle}
               />
             )}
           </div>
@@ -160,7 +153,7 @@ const ProjectPage = ({ user, onLogout }) => {
               
               {activeTab === 'activity' && (
                 <MessagesComponent 
-                  messages={project.messages}
+                  messages={project.activity}
                   canAddMessage={isMember}
                 />
               )}
