@@ -19,8 +19,5 @@ RUN npm run build
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Set environment variables
-ENV NODE_ENV=production
-
 # Start the application
 CMD ["npm", "start"]
