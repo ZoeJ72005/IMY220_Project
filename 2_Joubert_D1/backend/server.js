@@ -152,6 +152,46 @@ app.put('/api/users/:id', async (req, res) => {
     }
 });
 
+// POST Add Friend
+app.post('/api/users/:id/friends', async (req, res) => {
+    const { currentUserId } = req.body;
+    const profileId = req.params.id;
+
+    try {
+        await User.findByIdAndUpdate(
+            currentUserId,
+            { $addToSet: { friends: profileId } } // Add profileId to current user's friends list
+        );
+        await User.findByIdAndUpdate(
+            profileId,
+            { $addToSet: { friends: currentUserId } } // Add currentUserId to the other user's friends list
+        );
+        res.json({ success: true, message: 'Friend added successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error adding friend' });
+    }
+});
+
+// DELETE Unfriend
+app.delete('/api/users/:id/friends', async (req, res) => {
+    const { currentUserId } = req.body;
+    const profileId = req.params.id;
+
+    try {
+        await User.findByIdAndUpdate(
+            currentUserId,
+            { $pull: { friends: profileId } } // Remove profileId from current user's friends list
+        );
+        await User.findByIdAndUpdate(
+            profileId,
+            { $pull: { friends: currentUserId } } // Remove currentUserId from the other user's friends list
+        );
+        res.json({ success: true, message: 'Friend removed successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error removing friend' });
+    }
+});
+
 // DELETE Profile (Delete your profile) -- Placeholder Logic
 app.delete('/api/users/:id', async (req, res) => {
     // NOTE: Full user deletion logic (cascading deletes for projects, messages, etc.) is complex.

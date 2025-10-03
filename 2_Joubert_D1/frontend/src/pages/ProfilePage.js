@@ -6,13 +6,14 @@ import EditProfile from '../components/EditProfile';
 import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
-// Removed: import '../styles/ProfilePage.css';=
+
 const ProfilePage = ({ user, onLogout }) => {
   const { userId } = useParams();
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [isFriend, setIsFriend] = useState(false);
 
   const isOwnProfile = user.id.toString() === userId;
 
@@ -23,6 +24,7 @@ const ProfilePage = ({ user, onLogout }) => {
         const data = await response.json();
         if (data.success) {
             setProfileUser(data.profile);
+            setIsFriend(user.friends.some(friend => friend.id === data.profile.id));
         } else {
             console.error(data.message);
         }
@@ -35,7 +37,7 @@ const ProfilePage = ({ user, onLogout }) => {
 
   useEffect(() => {
     fetchProfile();
-  }, [userId]);
+  }, [userId, user]);
 
   const handleEditToggle = () => setIsEditing(prev => !prev);
 
@@ -60,6 +62,44 @@ const ProfilePage = ({ user, onLogout }) => {
         }
     } catch (error) {
         console.error('Network error during profile update:', error);
+    }
+  };
+
+  const handleAddFriend = async () => {
+    try {
+      const response = await fetch(`/api/users/${userId}/friends`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setIsFriend(true);
+        alert('Friend added successfully.');
+      } else {
+        alert('Failed to add friend: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error adding friend.');
+    }
+  };
+
+  const handleUnfriend = async () => {
+    try {
+      const response = await fetch(`/api/users/${userId}/friends`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setIsFriend(false);
+        alert('Friend removed successfully.');
+      } else {
+        alert('Failed to remove friend: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error removing friend.');
     }
   };
 
@@ -98,6 +138,9 @@ const ProfilePage = ({ user, onLogout }) => {
                 isOwnProfile={isOwnProfile}
                 onEdit={handleEditToggle}
                 currentUser={user}
+                isFriend={isFriend}
+                onAddFriend={handleAddFriend}
+                onUnfriend={handleUnfriend}
               />
             )}
           </aside>

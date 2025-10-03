@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 
-const ProfileComponent = ({ profile, isOwnProfile, onEdit }) => {
+const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend, onUnfriend }) => {
   // Fixes potential issue where joinDate might be an object if MongoDB schema is strict
   const formatDate = (date) => {
     if (date instanceof Date) {
@@ -66,7 +66,11 @@ const ProfileComponent = ({ profile, isOwnProfile, onEdit }) => {
         {isOwnProfile 
           ? <button onClick={onEdit} className={`${buttonClass('var(--terminal-accent)')} edit-btn`}>EDIT PROFILE</button>
           : <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-              <button className={`${buttonClass('var(--terminal-text)')} friend-btn`}>ADD FRIEND</button>
+              {isFriend ? (
+                  <button onClick={onUnfriend} className={`${buttonClass('var(--terminal-error)')} friend-btn`}>UNFRIEND</button>
+              ) : (
+                  <button onClick={onAddFriend} className={`${buttonClass('var(--terminal-text)')} friend-btn`}>ADD FRIEND</button>
+              )}
               <button className={`${buttonClass('var(--terminal-dim)')} message-btn`}>SEND MESSAGE</button>
             </div>
         }
