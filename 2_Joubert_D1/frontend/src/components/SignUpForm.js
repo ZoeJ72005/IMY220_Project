@@ -107,22 +107,23 @@ const SignUpForm = ({ onLogin }) => {
   };
 
   return (
-    <div className="signup-form">
-      <h3 className="form-title">
+    <div className="font-fira-code space-y-4">
+      <h3 className="text-lg text-terminal-accent font-bold">
         &gt; CREATE_NEW_USER
-        <span className="cursor">_</span>
+        <span className="cursor animate-blink">_</span>
       </h3>
       
       {errors.general && (
-        <div className="error-message terminal-error">
+        <div className="text-terminal-error text-xs p-2 border border-terminal-error">
           ERROR: {errors.general}
         </div>
       )}
       
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Username */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('signup-username')}
           >
             &gt; USERNAME:
@@ -138,13 +139,14 @@ const SignUpForm = ({ onLogin }) => {
             required
           />
           {errors.username && (
-            <div className="error-message">ERROR: {errors.username}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.username}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Email */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('signup-email')}
           >
             &gt; EMAIL_ADDRESS:
@@ -160,13 +162,14 @@ const SignUpForm = ({ onLogin }) => {
             required
           />
           {errors.email && (
-            <div className="error-message">ERROR: {errors.email}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.email}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Password */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('signup-password')}
           >
             &gt; PASSWORD:
@@ -182,13 +185,14 @@ const SignUpForm = ({ onLogin }) => {
             required
           />
           {errors.password && (
-            <div className="error-message">ERROR: {errors.password}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.password}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Confirm Password */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('signup-confirm-password')}
           >
             &gt; CONFIRM_PASSWORD:
@@ -204,20 +208,20 @@ const SignUpForm = ({ onLogin }) => {
             required
           />
           {errors.confirmPassword && (
-            <div className="error-message">ERROR: {errors.confirmPassword}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.confirmPassword}</div>
           )}
         </div>
 
         <button
           type="submit"
-          className="terminal-button submit-btn"
+          className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full mt-6"
           disabled={isLoading}
         >
           {isLoading ? 'CREATING_USER...' : '&gt; REGISTER'}
         </button>
       </form>
       
-      <div className="form-footer">
+      <div className="text-terminal-dim text-xs text-center pt-2 border-t border-terminal-dim/50">
         <p>Join the Terminal/VCS community</p>
       </div>
     </div>

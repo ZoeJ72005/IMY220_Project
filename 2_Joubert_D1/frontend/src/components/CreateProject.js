@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// No external CSS import needed
 
 const CreateProject = ({ user, onProjectCreated }) => {
   const [formData, setFormData] = useState({
@@ -69,12 +70,27 @@ const CreateProject = ({ user, onProjectCreated }) => {
 
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Project created:', formData);
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...formData, ownerId: user.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        onProjectCreated();
+      } else {
+        setErrors({ general: data.message });
+      }
+    } catch (error) {
+      setErrors({ general: 'Network error. Please try again.' });
+    } finally {
       setIsSubmitting(false);
-      onProjectCreated();
-    }, 1000);
+    }
   };
 
   const handleLabelClick = (inputName) => {
@@ -84,17 +100,29 @@ const CreateProject = ({ user, onProjectCreated }) => {
     }
   };
 
+  const buttonClass = (colorVar) => `
+    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
+    hover:bg-[rgba(0,255,0,0.1)] w-full
+  `;
+
   return (
-    <div className="create-project">
-      <h3 className="form-title">
+    <div className="font-fira-code">
+      <h3 className="text-lg text-terminal-accent font-bold mb-4">
         &gt; CREATE_NEW_PROJECT
-        <span className="cursor">_</span>
+        <span className="cursor animate-blink">_</span>
       </h3>
       
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
+      {errors.general && (
+        <div className="text-terminal-error text-xs mb-4 p-2 border border-terminal-error">
+          ERROR: {errors.general}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Project Name */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('project-name')}
           >
             PROJECT_NAME:
@@ -110,13 +138,14 @@ const CreateProject = ({ user, onProjectCreated }) => {
             required
           />
           {errors.name && (
-            <div className="error-message">ERROR: {errors.name}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.name}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Description */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('project-description')}
           >
             DESCRIPTION:
@@ -132,13 +161,14 @@ const CreateProject = ({ user, onProjectCreated }) => {
             required
           />
           {errors.description && (
-            <div className="error-message">ERROR: {errors.description}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.description}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Project Type */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('project-type')}
           >
             PROJECT_TYPE:
@@ -158,9 +188,10 @@ const CreateProject = ({ user, onProjectCreated }) => {
           </select>
         </div>
 
-        <div className="form-group">
+        {/* Tags */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('project-tags')}
           >
             TAGS (comma separated):
@@ -176,9 +207,10 @@ const CreateProject = ({ user, onProjectCreated }) => {
           />
         </div>
 
-        <div className="form-group">
+        {/* Initial Version */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('project-version')}
           >
             INITIAL_VERSION:
@@ -193,13 +225,13 @@ const CreateProject = ({ user, onProjectCreated }) => {
             required
           />
           {errors.version && (
-            <div className="error-message">ERROR: {errors.version}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.version}</div>
           )}
         </div>
 
         <button
           type="submit"
-          className="terminal-button submit-btn"
+          className={`${buttonClass('var(--terminal-accent)')} mt-6`}
           disabled={isSubmitting}
         >
           {isSubmitting ? 'CREATING...' : 'CREATE_PROJECT'}

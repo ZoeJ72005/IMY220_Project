@@ -67,17 +67,23 @@ const EditProject = ({ project, onSave, onCancel }) => {
     }
   };
 
+  const buttonClass = (colorVar) => `
+    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
+    hover:bg-[rgba(0,255,0,0.1)] w-full sm:w-auto
+  `;
+
   return (
-    <div className="edit-project">
-      <h3 className="edit-title">
+    <div className="font-fira-code">
+      <h3 className="text-lg text-terminal-accent font-bold mb-4">
         &gt; EDIT_PROJECT
-        <span className="cursor">_</span>
+        <span className="cursor animate-blink">_</span>
       </h3>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Project Name */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer block"
             onClick={() => handleLabelClick('edit-project-name')}
           >
             PROJECT_NAME:
@@ -92,13 +98,14 @@ const EditProject = ({ project, onSave, onCancel }) => {
             required
           />
           {errors.name && (
-            <div className="error-message">ERROR: {errors.name}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.name}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Description */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer block"
             onClick={() => handleLabelClick('edit-project-description')}
           >
             DESCRIPTION:
@@ -113,13 +120,14 @@ const EditProject = ({ project, onSave, onCancel }) => {
             required
           />
           {errors.description && (
-            <div className="error-message">ERROR: {errors.description}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.description}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Project Type */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer block"
             onClick={() => handleLabelClick('edit-project-type')}
           >
             PROJECT_TYPE:
@@ -139,11 +147,12 @@ const EditProject = ({ project, onSave, onCancel }) => {
           </select>
         </div>
 
-        <div className="form-actions">
-          <button type="submit" className="save-btn terminal-button">
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+          <button type="submit" className={`${buttonClass('var(--terminal-accent)')}`}>
             SAVE_CHANGES
           </button>
-          <button type="button" onClick={onCancel} className="cancel-btn terminal-button">
+          <button type="button" onClick={onCancel} className={`${buttonClass('var(--terminal-text)')}`}>
             CANCEL
           </button>
         </div>

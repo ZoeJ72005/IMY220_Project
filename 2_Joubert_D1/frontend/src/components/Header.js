@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import './Header.css';
+import '../styles/Header.css';
+import SearchInput from './SearchInput';
 
 const Header = ({ user, onLogout }) => {
   const location = useLocation();
@@ -38,12 +39,7 @@ const Header = ({ user, onLogout }) => {
           </Link>
           
           <div className="nav-search">
-            <input 
-              type="text" 
-              className="search-input terminal-input" 
-              placeholder="search_projects..."
-            />
-            <button className="search-btn terminal-button">FIND</button>
+            <SearchInput />
           </div>
           
           <div className="nav-user">

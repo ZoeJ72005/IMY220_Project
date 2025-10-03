@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// No external CSS import needed
 
 const EditProfile = ({ profile, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -57,18 +58,25 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
       input.focus();
     }
   };
+  
+  const buttonClass = (colorVar) => `
+    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
+    hover:bg-[rgba(0,255,0,0.1)] w-full sm:w-auto
+  `;
 
   return (
-    <div className="edit-profile">
-      <h3 className="edit-title">
+    <div className="font-fira-code">
+      <h3 className="text-lg text-terminal-text font-bold mb-4">
         &gt; EDIT_PROFILE
-        <span className="cursor">_</span>
+        <span className="cursor animate-blink">_</span>
       </h3>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        
+        {/* Full Name */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('edit-fullname')}
           >
             FULL_NAME:
@@ -84,13 +92,14 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
             maxLength="50"
           />
           {errors.fullName && (
-            <div className="error-message">ERROR: {errors.fullName}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.fullName}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Bio */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('edit-bio')}
           >
             BIO:
@@ -105,17 +114,18 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
             maxLength="200"
             rows="3"
           />
-          <div className="char-count">
+          <div className="text-terminal-dim text-xs text-right">
             {formData.bio.length}/200
           </div>
           {errors.bio && (
-            <div className="error-message">ERROR: {errors.bio}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.bio}</div>
           )}
         </div>
 
-        <div className="form-group">
+        {/* Location */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('edit-location')}
           >
             LOCATION:
@@ -131,9 +141,10 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
           />
         </div>
 
-        <div className="form-group">
+        {/* Company */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('edit-company')}
           >
             COMPANY:
@@ -149,9 +160,10 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
           />
         </div>
 
-        <div className="form-group">
+        {/* Website */}
+        <div className="form-group space-y-1">
           <label 
-            className="form-label"
+            className="form-label text-terminal-text text-sm cursor-pointer"
             onClick={() => handleLabelClick('edit-website')}
           >
             WEBSITE:
@@ -166,15 +178,16 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
             placeholder="https://your-website.com"
           />
           {errors.website && (
-            <div className="error-message">ERROR: {errors.website}</div>
+            <div className="text-terminal-error text-xs">ERROR: {errors.website}</div>
           )}
         </div>
 
-        <div className="form-actions">
-          <button type="submit" className="save-btn terminal-button">
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+          <button type="submit" className={`${buttonClass('var(--terminal-accent)')}`}>
             SAVE_CHANGES
           </button>
-          <button type="button" onClick={onCancel} className="cancel-btn terminal-button">
+          <button type="button" onClick={onCancel} className={`${buttonClass('var(--terminal-text)')}`}>
             CANCEL
           </button>
         </div>
