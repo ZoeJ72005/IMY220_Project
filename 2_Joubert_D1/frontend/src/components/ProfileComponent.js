@@ -18,7 +18,7 @@ const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend
   `;
 
   return (
-    <div className="flex flex-col gap-5 font-fira-code">
+    <div className="flex flex-col gap-4 font-fira-code">
       
       {/* Profile Header */}
       <div className="text-center pb-3.5 border-b border-terminal-dim">
@@ -36,16 +36,16 @@ const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend
         <div className="text-[10px] text-terminal-dim">JOINED: {formatDate(profile.joinDate)}</div>
       </div>
 
-      {/* Bio Section */}
+      {/* --- Bio Block --- */}
       {profile.bio && (
-        <div className="py-3.5 border-b border-terminal-dim">
+        <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50">
           <h3 className="text-sm text-terminal-accent mb-2.5">&gt; BIO</h3>
           <p className="text-xs text-terminal-text leading-relaxed">{profile.bio}</p>
         </div>
       )}
 
-      {/* Details Section */}
-      <div className="py-3.5 border-b border-terminal-dim flex flex-col gap-2">
+      {/* --- Details Block --- */}
+      <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col gap-2">
         <h3 className="text-sm text-terminal-accent mb-1">&gt; DETAILS</h3>
         {profile.location && <div className="flex flex-col"><span className="text-[10px] text-terminal-dim">LOCATION:</span> <span className="text-xs text-terminal-text">{profile.location}</span></div>}
         {profile.company && <div className="flex flex-col"><span className="text-[10px] text-terminal-dim">COMPANY:</span> <span className="text-xs text-terminal-text">{profile.company}</span></div>}
@@ -53,16 +53,17 @@ const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend
         <div className="flex flex-col"><span className="text-[10px] text-terminal-dim">EMAIL:</span> <span className="text-xs text-terminal-text">{profile.email}</span></div>
       </div>
 
-      {/* Languages Section */}
+      {/* --- Languages Block --- */}
       {profile.languages?.length > 0 && (
-        <div className="py-3.5 border-b border-terminal-dim">
+        <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50">
           <h3 className="text-sm text-terminal-accent mb-2.5">&gt; LANGUAGES</h3>
           <div className="flex flex-wrap gap-2">{profile.languages.map((l,i)=><span key={i} className="bg-[rgba(0,255,0,0.1)] border border-terminal-dim text-terminal-text px-2 py-1 rounded text-[10px]">{l}</span>)}</div>
         </div>
       )}
 
-      {/* Actions */}
-      <div className="pt-3.5">
+      {/* --- Actions Block --- */}
+      <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col space-y-2">
+        <h3 className="text-sm text-terminal-accent mb-1">&gt; ACTIONS</h3>
         {isOwnProfile 
           ? <button onClick={onEdit} className={`${buttonClass('var(--terminal-accent)')} edit-btn`}>EDIT PROFILE</button>
           : <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
