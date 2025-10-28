@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProjectComponent from '../components/ProjectComponent';
@@ -16,7 +16,7 @@ const ProjectPage = ({ user, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
 
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/projects/${projectId}`);
@@ -31,14 +31,15 @@ const ProjectPage = ({ user, onLogout }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     fetchProject();
-  }, [projectId]);
+  }, [fetchProject]);
 
-  const isOwner = project && project.owner === user.username;
-  const isMember = project && project.members.includes(user.username);
+  const isOwner = project && project.owner?.id === user.id;
+  const isMember = project && project.members?.some(member => member.id === user.id);
+  const isCheckedOutByUser = project && project.checkedOutBy?.id === user.id;
 
   const handleEditToggle = () => setIsEditing(prev => !prev);
   
@@ -51,7 +52,7 @@ const ProjectPage = ({ user, onLogout }) => {
         });
         const data = await response.json();
         if (data.success) {
-            setProject(prev => ({ ...prev, ...updatedData }));
+            setProject(data.project);
             setIsEditing(false);
         } else {
             console.error('Error updating project:', data.message);
@@ -88,7 +89,11 @@ const ProjectPage = ({ user, onLogout }) => {
         const data = await response.json();
         if (data.success) {
             alert('Project checked out successfully.');
-            fetchProject(); // Re-fetch to update status
+            if (data.project) {
+              setProject(data.project);
+            } else {
+              fetchProject();
+            }
         } else {
             alert('Checkout failed: ' + data.message);
         }
@@ -112,7 +117,11 @@ const ProjectPage = ({ user, onLogout }) => {
         if (data.success) {
             alert('Project checked in successfully.');
             setCheckoutMessage('');
-            fetchProject(); // Re-fetch to update status
+            if (data.project) {
+              setProject(data.project);
+            } else {
+              fetchProject();
+            }
             setActiveTab('activity'); // View new activity
         } else {
             alert('Check-in failed: ' + data.message);
@@ -120,6 +129,34 @@ const ProjectPage = ({ user, onLogout }) => {
     } catch (error) {
         alert('Network error during check-in.');
     }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (data.project) {
+          setProject(data.project);
+        }
+        alert('Download recorded successfully.');
+      } else {
+        alert('Download failed: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error during download.');
+    }
+  };
+
+  const handleMessageAdded = (newActivity) => {
+    setProject(prev => ({
+      ...prev,
+      activity: [newActivity, ...(prev?.activity || [])],
+    }));
   };
 
   if (loading || !project) {
@@ -157,6 +194,7 @@ const ProjectPage = ({ user, onLogout }) => {
                 onDelete={handleDelete}
                 onCheckout={handleCheckout}
                 onCheckin={handleCheckin}
+                onDownload={handleDownload}
               />
             )}
           </aside>
@@ -192,7 +230,7 @@ const ProjectPage = ({ user, onLogout }) => {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-terminal-dim">MEMBERS:</span>
-                    <span className="text-base text-terminal-text">{project.members.length}</span>
+                    <span className="text-base text-terminal-text">{project.members?.length || 0}</span>
                   </div>
                 </div>
               </div>
@@ -209,11 +247,14 @@ const ProjectPage = ({ user, onLogout }) => {
               {/* Activity Tab */}
               <div className={`transition-opacity duration-250 ${activeTab === 'activity' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
                 <MessagesComponent 
-                  messages={project.activity}
+                  projectId={project.id}
+                  messages={project.activity || []}
+                  currentUser={user}
                   canAddMessage={isMember}
+                  onMessageAdded={handleMessageAdded}
                 />
 
-                {isMember && project.checkoutStatus === 'checked-out' && project.checkedOutBy === user.username && (
+                {isMember && project.checkoutStatus === 'checked-out' && isCheckedOutByUser && (
                     <div className="mt-8 p-4 border border-terminal-warning rounded-lg bg-terminal-input-bg">
                         <h4 className="text-terminal-warning mb-3">&gt; CHECKIN_MESSAGE:</h4>
                         <textarea

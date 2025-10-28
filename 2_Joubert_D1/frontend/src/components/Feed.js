@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ProjectPreview from './ProjectPreview';
 
 
@@ -7,28 +7,28 @@ const Feed = ({ feedType, user }) => {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('date');
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/projects/feed?feedType=${feedType}&sortBy=${sortBy}&userId=${user.id}`);
-        const data = await response.json();
-        if (data.success) {
-          setProjects(data.projects);
-        } else {
-          console.error(data.message);
-          setProjects([]);
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
+  const fetchProjects = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/projects/feed?feedType=${feedType}&sortBy=${sortBy}&userId=${user.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setProjects(data.projects);
+      } else {
+        console.error(data.message);
         setProjects([]);
-      } finally {
-        setLoading(false);
       }
-    };
-    
-    fetchProjects();
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
   }, [feedType, sortBy, user.id]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   if (loading) {
     return (
@@ -80,6 +80,7 @@ const Feed = ({ feedType, user }) => {
               key={project.id} 
               project={project} 
               currentUser={user}
+              onProjectMutated={fetchProjects}
             />
           ))
         )}

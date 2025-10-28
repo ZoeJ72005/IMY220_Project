@@ -18,13 +18,21 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     fullName: { type: String },
+    profileImage: { type: String, default: '' },
     bio: { type: String },
     location: { type: String },
     company: { type: String },
     website: { type: String },
     languages: [{ type: String }],
     joinDate: { type: Date, default: Date.now },
-    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    friends: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        default: []
+    },
+    projects: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
+        default: []
+    },
 });
 
 const projectSchema = new mongoose.Schema({

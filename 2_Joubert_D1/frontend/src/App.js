@@ -9,17 +9,32 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const enrichUser = (userData) => ({
+    ...userData,
+    friends: userData?.friends || [],
+  });
+
   useEffect(() => {
     const storedUser = localStorage.getItem('terminal_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(enrichUser(parsedUser));
     }
     setLoading(false);
   }, []);
 
+  const persistUser = (userData) => {
+    const enriched = enrichUser(userData);
+    setUser(enriched);
+    localStorage.setItem('terminal_user', JSON.stringify(enriched));
+  };
+
   const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('terminal_user', JSON.stringify(userData));
+    persistUser(userData);
+  };
+
+  const handleUserUpdate = (updatedUser) => {
+    persistUser(updatedUser);
   };
 
   const handleLogout = () => {
@@ -55,7 +70,13 @@ function App() {
         <Route 
           path="/profile/:userId" 
           element={
-            user ? <ProfilePage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
+            user ? (
+              <ProfilePage 
+                user={user} 
+                onLogout={handleLogout} 
+                onUserUpdate={handleUserUpdate} 
+              />
+            ) : <Navigate to="/" replace />
           } 
         />
         <Route 
