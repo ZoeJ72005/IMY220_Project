@@ -4,6 +4,7 @@ import SplashPage from './pages/SplashPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import ProjectPage from './pages/ProjectPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -84,6 +85,12 @@ function App() {
           element={
             user ? <ProjectPage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
           } 
+        />
+        <Route 
+          path="/search" 
+          element={
+            user ? <SearchResultsPage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
+          }
         />
       </Routes>
     </div>

@@ -35,6 +35,16 @@ const userSchema = new mongoose.Schema({
     },
 });
 
+const projectFileSchema = new mongoose.Schema({
+    originalName: { type: String, required: true },
+    storedName: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    size: { type: Number, required: true },
+    uploadedAt: { type: Date, default: Date.now },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    relativePath: { type: String, required: true },
+});
+
 const projectSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String, required: true },
@@ -46,15 +56,16 @@ const projectSchema = new mongoose.Schema({
     lastActivity: { type: Date, default: Date.now },
     checkoutStatus: { type: String, enum: ['checked-in', 'checked-out'], default: 'checked-in' },
     checkedOutBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    members: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        default: []
+    },
     downloads: { type: Number, default: 0 },
-    image: { type: String },
-    files: [{
-        id: Number,
-        name: String,
-        size: String,
-        modified: String
-    }],
+    image: { type: String, default: '' },
+    files: {
+        type: [projectFileSchema],
+        default: []
+    },
     activity: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }]
 });
 
