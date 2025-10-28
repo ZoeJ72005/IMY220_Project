@@ -16,10 +16,6 @@ const PORT = process.env.PORT || 5000;
 
 connectDB();
 
-ensureDefaultProjectTypes().catch((error) => {
-    console.error('Failed to seed project types:', error);
-});
-
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -110,6 +106,10 @@ const ensureDefaultProjectTypes = async () => {
         }))
     );
 };
+
+ensureDefaultProjectTypes().catch((error) => {
+    console.error('Failed to seed project types:', error);
+});
 
 const normalizeTags = (tagsInput) => {
     if (!tagsInput) {
