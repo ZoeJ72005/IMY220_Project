@@ -136,7 +136,7 @@ const LoginForm = ({ onLogin }) => {
             className="form-input terminal-input"
             value={formData.password}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
             required
           />
           {errors.password && (
@@ -161,3 +161,4 @@ const LoginForm = ({ onLogin }) => {
 };
 
 export default LoginForm;
+

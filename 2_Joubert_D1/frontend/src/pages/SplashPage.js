@@ -84,11 +84,11 @@ const SplashPage = ({ onLogin }) => {
         <div className="terminal-footer">
           <div className="brand-info">
             <h1 className="brand-name">C:CodeRepo</h1>
-            <p className="tagline">Secure • Collaborative • Retro-Style</p>
+            <p className="tagline">Secure | Collaborative | Retro-Style</p>
             <div className="features">
-              <span>✓ Version Control</span>
-              <span>✓ Team Collaboration</span>
-              <span>✓ Project Management</span>
+              <span>* Version Control</span>
+              <span>* Team Collaboration</span>
+              <span>* Project Management</span>
             </div>
           </div>
         </div>

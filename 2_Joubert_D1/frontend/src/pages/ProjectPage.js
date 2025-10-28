@@ -5,6 +5,7 @@ import ProjectComponent from '../components/ProjectComponent';
 import FilesComponent from '../components/FilesComponent';
 import MessagesComponent from '../components/MessagesComponent';
 import EditProject from '../components/EditProject';
+import DiscussionBoard from '../components/DiscussionBoard';
 
 const ProjectPage = ({ user, onLogout }) => {
   const { projectId } = useParams();
@@ -22,6 +23,8 @@ const ProjectPage = ({ user, onLogout }) => {
     files: [],
   });
   const [checkinFileInputKey, setCheckinFileInputKey] = useState(0);
+  const [discussion, setDiscussion] = useState([]);
+  const [discussionLoading, setDiscussionLoading] = useState(false);
 
   const fetchProject = useCallback(async () => {
     setLoading(true);
@@ -41,9 +44,33 @@ const ProjectPage = ({ user, onLogout }) => {
     }
   }, [projectId]);
 
+  const fetchDiscussion = useCallback(async () => {
+    if (!projectId) return;
+    setDiscussionLoading(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/discussion`);
+      const data = await response.json();
+      if (data.success) {
+        setDiscussion(data.discussion || []);
+      } else {
+        console.error('Unable to load discussion:', data.message);
+        setDiscussion([]);
+      }
+    } catch (discussionError) {
+      console.error('Network error while loading discussion:', discussionError);
+      setDiscussion([]);
+    } finally {
+      setDiscussionLoading(false);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    fetchDiscussion();
+  }, [fetchDiscussion]);
 
   useEffect(() => {
     if (project?.version) {
@@ -174,6 +201,24 @@ const ProjectPage = ({ user, onLogout }) => {
       }
     } catch (checkinError) {
       alert('Network error during check-in.');
+    }
+  };
+
+  const handleDiscussionPost = async (text) => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/discussion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, message: text }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDiscussion((prev) => [data.message, ...(prev || [])]);
+      } else {
+        alert(data.message || 'Unable to post to the discussion board.');
+      }
+    } catch (error) {
+      alert('Network error posting to the discussion board.');
     }
   };
 
@@ -350,7 +395,7 @@ const ProjectPage = ({ user, onLogout }) => {
 
           <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.1)] min-h-[400px] flex flex-col">
             <div className="flex bg-terminal-dim border-b border-terminal-border">
-              {['overview', 'files', 'activity'].map((tab) => (
+              {['overview', 'files', 'activity', 'discussion'].map((tab) => (
                 <button
                   key={tab}
                   className={`px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out ${
@@ -551,6 +596,19 @@ const ProjectPage = ({ user, onLogout }) => {
                     </button>
                   </div>
                 )}
+              </div>
+
+              <div
+                className={`transition-opacity duration-250 ${
+                  activeTab === 'discussion' ? 'opacity-100 block' : 'opacity-0 hidden'
+                }`}
+              >
+                <DiscussionBoard
+                  discussion={discussion}
+                  loading={discussionLoading}
+                  canDiscuss={isMember}
+                  onSendMessage={handleDiscussionPost}
+                />
               </div>
             </div>
           </div>

@@ -181,7 +181,7 @@ const SignUpForm = ({ onLogin }) => {
             className="form-input terminal-input"
             value={formData.password}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
             required
           />
           {errors.password && (
@@ -204,7 +204,7 @@ const SignUpForm = ({ onLogin }) => {
             className="form-input terminal-input"
             value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
             required
           />
           {errors.confirmPassword && (
@@ -229,3 +229,4 @@ const SignUpForm = ({ onLogin }) => {
 };
 
 export default SignUpForm;
+

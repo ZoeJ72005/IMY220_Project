@@ -1,10 +1,12 @@
 import React from 'react';
+
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/Header.css';
 import SearchInput from './SearchInput';
 
 const Header = ({ user, onLogout }) => {
   const location = useLocation();
+  const pendingRequests = user?.pendingFriendRequests?.length || 0;
 
   const isActivePath = (path) => {
     if (path === '/home') {
@@ -37,6 +39,15 @@ const Header = ({ user, onLogout }) => {
           >
             &gt; PROFILE
           </Link>
+
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className={`nav-link ${isActivePath('/admin') ? 'active' : ''}`}
+            >
+              &gt; ADMIN
+            </Link>
+          )}
           
           <div className="nav-search">
             <SearchInput />
@@ -46,6 +57,11 @@ const Header = ({ user, onLogout }) => {
             <span className="user-info">
               USER: {user.username}
             </span>
+            {pendingRequests > 0 && (
+              <span className="user-alert text-terminal-warning text-xs">
+                REQUESTS: {pendingRequests}
+              </span>
+            )}
             <button 
               onClick={onLogout}
               className="logout-btn terminal-button"
@@ -61,6 +77,7 @@ const Header = ({ user, onLogout }) => {
           {location.pathname === '/home' && '> ~/projects/feed'}
           {location.pathname.startsWith('/profile') && `> ~/users/${user.username}`}
           {location.pathname.startsWith('/project') && '> ~/projects/view'}
+          {location.pathname.startsWith('/admin') && '> ~/system/admin'}
         </span>
         <span className="cursor">_</span>
       </div>
@@ -69,3 +86,4 @@ const Header = ({ user, onLogout }) => {
 };
 
 export default Header;
+

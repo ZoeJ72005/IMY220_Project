@@ -25,12 +25,21 @@ const userSchema = new mongoose.Schema({
     website: { type: String },
     languages: [{ type: String }],
     joinDate: { type: Date, default: Date.now },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
     friends: {
         type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         default: []
     },
     projects: {
         type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
+        default: []
+    },
+    pendingFriendRequests: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        default: []
+    },
+    outgoingFriendRequests: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         default: []
     },
 });
@@ -77,8 +86,22 @@ const messageSchema = new mongoose.Schema({
     time: { type: Date, default: Date.now }
 });
 
+const projectTypeSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    createdAt: { type: Date, default: Date.now },
+});
+
+const discussionMessageSchema = new mongoose.Schema({
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    message: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+});
+
 const User = mongoose.model('User', userSchema);
 const Project = mongoose.model('Project', projectSchema);
 const Message = mongoose.model('Message', messageSchema);
+const ProjectType = mongoose.model('ProjectType', projectTypeSchema);
+const DiscussionMessage = mongoose.model('DiscussionMessage', discussionMessageSchema);
 
-module.exports = { connectDB, User, Project, Message };
+module.exports = { connectDB, User, Project, Message, ProjectType, DiscussionMessage };

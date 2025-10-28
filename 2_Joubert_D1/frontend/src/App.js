@@ -5,14 +5,18 @@ import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import ProjectPage from './pages/ProjectPage';
 import SearchResultsPage from './pages/SearchResultsPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const enrichUser = (userData) => ({
+  const enrichUser = (userData = {}) => ({
     ...userData,
     friends: userData?.friends || [],
+    pendingFriendRequests: userData?.pendingFriendRequests || [],
+    outgoingFriendRequests: userData?.outgoingFriendRequests || [],
+    role: userData?.role || 'user',
   });
 
   useEffect(() => {
@@ -90,6 +94,20 @@ function App() {
           path="/search" 
           element={
             user ? <SearchResultsPage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            user ? (
+              user.role === 'admin' ? (
+                <AdminDashboard user={user} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/home" replace />
+              )
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
       </Routes>

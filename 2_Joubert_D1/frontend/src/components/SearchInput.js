@@ -19,7 +19,7 @@ const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
     try {
         // Assuming onSearch is a function passed down to handle navigation/state updates
         // For D2 completion, we'll implement the fetch here to get results
-        const response = await fetch(`/api/search?term=${term}&type=${type}`);
+        const response = await fetch(`/api/search?term=${encodeURIComponent(term)}&type=${encodeURIComponent(type)}`);
         const data = await response.json();
         
         if (data.success) {
@@ -60,6 +60,7 @@ const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
             <option value="projects">PROJECTS</option>
             <option value="users">USERS</option>
             <option value="tags">TAGS</option>
+            <option value="activity">CHECK-INS</option>
           </select>
         </div>
         
@@ -85,16 +86,40 @@ const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
             &gt; {searchResults.length} RESULTS FOUND:
           </div>
           <div className="py-1.5">
-            {searchResults.map(result => (
-                <Link 
-                    key={result.id} 
-                    to={`/${result.type === 'users' ? 'profile' : 'project'}/${result.id}`}
-                    className="w-full p-2.5 block no-underline text-terminal-text text-[11px] text-left transition-colors duration-300 hover:bg-terminal-button-hover hover:text-terminal-accent"
-                >
-                    <span className="font-bold">{result.name}</span> 
-                    <span className="text-terminal-dim ml-2">({result.type.toUpperCase()})</span>
-                </Link>
-            ))}
+            {searchResults.map(result => {
+                const isUser = result.type === 'users';
+                const isActivity = result.type === 'activity';
+                const linkTarget = isUser
+                    ? `/profile/${result.id}`
+                    : isActivity
+                        ? (result.projectId
+                            ? `/project/${result.projectId}`
+                            : `/search?term=${encodeURIComponent(searchTerm)}&type=projects`)
+                        : `/project/${result.id}`;
+
+                return (
+                    <Link 
+                        key={result.id} 
+                        to={linkTarget}
+                        className="w-full p-2.5 block no-underline text-terminal-text text-[11px] text-left transition-colors duration-300 hover:bg-terminal-button-hover hover:text-terminal-accent"
+                    >
+                        <span className="font-bold">{result.name}</span> 
+                        <span className="text-terminal-dim ml-2">({result.type.toUpperCase()})</span>
+                        {result.description && (
+                            <span className="block text-terminal-dim mt-1">
+                                {result.description.length > 80
+                                    ? `${result.description.slice(0, 80)}...`
+                                    : result.description}
+                            </span>
+                        )}
+                        {isActivity && result.user && (
+                            <span className="block text-terminal-dim text-[10px] mt-1">
+                                by {result.user.username} {result.time && `- ${result.time}`}
+                            </span>
+                        )}
+                    </Link>
+                );
+            })}
           </div>
         </div>
       )}

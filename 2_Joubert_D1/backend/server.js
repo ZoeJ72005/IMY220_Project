@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const crypto = require('crypto');
-const { connectDB, User, Project, Message } = require('./database');
+const { connectDB, User, Project, Message, ProjectType, DiscussionMessage } = require('./database');
 const mongoose = require('mongoose');
 
 // require('dotenv').config(); // Removed to use Docker's --env-file
@@ -15,6 +15,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 connectDB();
+
+ensureDefaultProjectTypes().catch((error) => {
+    console.error('Failed to seed project types:', error);
+});
 
 // Middleware
 app.use(cors());
@@ -42,18 +46,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const PROJECT_FILE_MAX_BYTES = 25 * 1024 * 1024;
-
-const PROJECT_TYPES = [
-    'web-application',
-    'desktop-application',
-    'mobile-application',
-    'framework',
-    'library',
-    'tool',
-    'game',
-    'service',
-    'other',
-];
 
 const resolveProjectIdForUpload = (req) => {
     if (req.projectUploadId) {
@@ -92,6 +84,32 @@ const projectUpload = multer({
     storage: projectStorage,
     limits: { fileSize: PROJECT_FILE_MAX_BYTES },
 });
+
+const DEFAULT_PROJECT_TYPES = [
+    'web-application',
+    'desktop-application',
+    'mobile-application',
+    'framework',
+    'library',
+    'tool',
+    'game',
+    'service',
+    'other',
+];
+
+const ensureDefaultProjectTypes = async () => {
+    const existing = await ProjectType.find({}).lean();
+    const lowerExisting = new Set(existing.map((type) => type.name.toLowerCase()));
+    const missing = DEFAULT_PROJECT_TYPES.filter((type) => !lowerExisting.has(type.toLowerCase()));
+    if (missing.length === 0) {
+        return;
+    }
+    await ProjectType.insertMany(
+        missing.map((name) => ({
+            name: name.toLowerCase(),
+        }))
+    );
+};
 
 const normalizeTags = (tagsInput) => {
     if (!tagsInput) {
@@ -224,6 +242,8 @@ const buildFilePayload = (projectId, fileDoc) => ({
 const buildAuthUserPayload = async (userId) => {
     const userDoc = await User.findById(userId)
         .populate('friends', 'username profileImage')
+        .populate('pendingFriendRequests', 'username profileImage')
+        .populate('outgoingFriendRequests', 'username profileImage')
         .lean();
 
     if (!userDoc) {
@@ -242,7 +262,10 @@ const buildAuthUserPayload = async (userId) => {
         website: userDoc.website || '',
         languages: userDoc.languages || [],
         joinDate: userDoc.joinDate ? userDoc.joinDate.toISOString() : null,
+        role: userDoc.role || 'user',
         friends: (userDoc.friends || []).map(mapUserPreview),
+        pendingFriendRequests: (userDoc.pendingFriendRequests || []).map(mapUserPreview),
+        outgoingFriendRequests: (userDoc.outgoingFriendRequests || []).map(mapUserPreview),
     };
 };
 
@@ -289,6 +312,8 @@ const buildProfilePayload = async (userId) => {
         languages: userDoc.languages || [],
         joinDate: userDoc.joinDate ? userDoc.joinDate.toISOString() : null,
         friends: (userDoc.friends || []).map(mapUserPreview),
+        pendingFriendRequests: (userDoc.pendingFriendRequests || []).map(mapUserPreview),
+        outgoingFriendRequests: (userDoc.outgoingFriendRequests || []).map(mapUserPreview),
         projects: projectSummaries,
     };
 };
@@ -306,6 +331,22 @@ const populateProjectDetail = async (projectId) => {
         })
         .lean();
 };
+
+const getProjectTypes = async () => {
+    const types = await ProjectType.find({}).sort({ name: 1 }).lean();
+    return types.map((type) => type.name);
+};
+
+const requireAdmin = async (userId) => {
+    const user = await User.findById(userId).lean();
+    if (!user || user.role !== 'admin') {
+        const error = new Error('Admin privileges required');
+        error.statusCode = 403;
+        throw error;
+    }
+    return user;
+};
+
 
 const formatProjectDetail = (project) => ({
     id: project._id.toString(),
@@ -325,6 +366,21 @@ const formatProjectDetail = (project) => ({
     files: (project.files || []).map((fileDoc) => buildFilePayload(project._id, fileDoc)),
     activity: formatActivity(project.activity),
 });
+
+const formatDiscussionMessage = (message) => ({
+    id: message._id.toString(),
+    user: mapUserPreview(message.userId),
+    message: message.message,
+    createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : null,
+});
+
+const getDiscussionMessages = async (projectId) => {
+    const discussion = await DiscussionMessage.find({ projectId })
+        .sort({ createdAt: -1 })
+        .populate('userId', 'username profileImage')
+        .lean();
+    return discussion.map(formatDiscussionMessage);
+};
 
 // ==============================
 // AUTHENTICATION & PROFILE ROUTES
@@ -458,52 +514,151 @@ app.put('/api/users/:id', async (req, res) => {
 });
 
 // POST Add Friend
-app.post('/api/users/:id/friends', async (req, res) => {
-    const { currentUserId } = req.body;
-    const profileObjectId = toObjectId(req.params.id);
-    const currentUserObjectId = toObjectId(currentUserId);
+app.post('/api/users/:id/friend-requests', async (req, res) => {
+    const targetUserId = toObjectId(req.params.id);
+    const requesterId = toObjectId(req.body.currentUserId);
 
-    if (!profileObjectId || !currentUserObjectId) {
-        return res.status(400).json({ success: false, message: 'Invalid user identifiers for friendship' });
+    if (!targetUserId || !requesterId) {
+        return res.status(400).json({ success: false, message: 'Invalid identifiers for friend request' });
     }
 
-    if (profileObjectId.toString() === currentUserObjectId.toString()) {
-        return res.status(400).json({ success: false, message: 'You cannot add yourself as a friend' });
+    if (targetUserId.toString() === requesterId.toString()) {
+        return res.status(400).json({ success: false, message: 'You cannot send a friend request to yourself' });
     }
 
     try {
-        const users = await Promise.all([
-            User.findById(currentUserObjectId).lean(),
-            User.findById(profileObjectId).lean(),
+        const [targetUser, requesterUser] = await Promise.all([
+            User.findById(targetUserId).lean(),
+            User.findById(requesterId).lean(),
         ]);
 
-        if (!users[0] || !users[1]) {
-            return res.status(404).json({ success: false, message: 'One or both users not found' });
+        if (!targetUser || !requesterUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const alreadyFriends = (requesterUser.friends || []).some(
+            (id) => id.toString() === targetUserId.toString()
+        );
+        if (alreadyFriends) {
+            return res.status(400).json({ success: false, message: 'You are already connected with this user' });
+        }
+
+        const alreadyPending = (targetUser.pendingFriendRequests || []).some(
+            (id) => id.toString() === requesterId.toString()
+        );
+        if (alreadyPending) {
+            return res.status(400).json({ success: false, message: 'Friend request already pending' });
+        }
+
+        const alreadyOutgoing = (requesterUser.outgoingFriendRequests || []).some(
+            (id) => id.toString() === targetUserId.toString()
+        );
+        if (alreadyOutgoing) {
+            return res.status(400).json({ success: false, message: 'You have already sent a friend request' });
         }
 
         await Promise.all([
-            User.findByIdAndUpdate(currentUserObjectId, { $addToSet: { friends: profileObjectId } }),
-            User.findByIdAndUpdate(profileObjectId, { $addToSet: { friends: currentUserObjectId } }),
+            User.findByIdAndUpdate(targetUserId, { $addToSet: { pendingFriendRequests: requesterId } }),
+            User.findByIdAndUpdate(requesterId, { $addToSet: { outgoingFriendRequests: targetUserId } }),
         ]);
 
-        const [updatedUser, updatedProfile] = await Promise.all([
-            buildAuthUserPayload(currentUserObjectId),
-            buildProfilePayload(profileObjectId),
+        const [updatedRequester, updatedProfile] = await Promise.all([
+            buildAuthUserPayload(requesterId),
+            buildProfilePayload(targetUserId),
         ]);
 
         res.json({
             success: true,
-            message: 'Friend added successfully',
+            message: 'Friend request sent',
+            user: updatedRequester,
+            profile: updatedProfile,
+        });
+    } catch (error) {
+        console.error('Friend request error:', error);
+        res.status(500).json({ success: false, message: 'Server error sending friend request' });
+    }
+});
+
+app.post('/api/users/:id/friend-requests/:requesterId/accept', async (req, res) => {
+    const currentUserId = toObjectId(req.params.id);
+    const requesterId = toObjectId(req.params.requesterId);
+
+    if (!currentUserId || !requesterId) {
+        return res.status(400).json({ success: false, message: 'Invalid identifiers for accepting friend request' });
+    }
+
+    try {
+        const currentUser = await User.findById(currentUserId).lean();
+        if (!currentUser) {
+            return res.status(404).json({ success: false, message: 'Current user not found' });
+        }
+
+        const hasRequest = (currentUser.pendingFriendRequests || []).some(
+            (id) => id.toString() === requesterId.toString()
+        );
+        if (!hasRequest) {
+            return res.status(400).json({ success: false, message: 'No pending friend request to accept' });
+        }
+
+        await Promise.all([
+            User.findByIdAndUpdate(currentUserId, {
+                $pull: { pendingFriendRequests: requesterId },
+                $addToSet: { friends: requesterId },
+            }),
+            User.findByIdAndUpdate(requesterId, {
+                $pull: { outgoingFriendRequests: currentUserId },
+                $addToSet: { friends: currentUserId },
+            }),
+        ]);
+
+        const [updatedUser, updatedProfile] = await Promise.all([
+            buildAuthUserPayload(currentUserId),
+            buildProfilePayload(requesterId),
+        ]);
+
+        res.json({
+            success: true,
+            message: 'Friend request accepted',
             user: updatedUser,
             profile: updatedProfile,
         });
     } catch (error) {
-        console.error('Add friend error:', error);
-        res.status(500).json({ success: false, message: 'Server error adding friend' });
+        console.error('Accept friend request error:', error);
+        res.status(500).json({ success: false, message: 'Server error accepting friend request' });
     }
 });
 
-// DELETE Unfriend
+app.post('/api/users/:id/friend-requests/:requesterId/decline', async (req, res) => {
+    const currentUserId = toObjectId(req.params.id);
+    const requesterId = toObjectId(req.params.requesterId);
+
+    if (!currentUserId || !requesterId) {
+        return res.status(400).json({ success: false, message: 'Invalid identifiers for declining friend request' });
+    }
+
+    try {
+        await Promise.all([
+            User.findByIdAndUpdate(currentUserId, { $pull: { pendingFriendRequests: requesterId } }),
+            User.findByIdAndUpdate(requesterId, { $pull: { outgoingFriendRequests: currentUserId } }),
+        ]);
+
+        const [updatedUser, updatedProfile] = await Promise.all([
+            buildAuthUserPayload(currentUserId),
+            buildProfilePayload(requesterId),
+        ]);
+
+        res.json({
+            success: true,
+            message: 'Friend request declined',
+            user: updatedUser,
+            profile: updatedProfile,
+        });
+    } catch (error) {
+        console.error('Decline friend request error:', error);
+        res.status(500).json({ success: false, message: 'Server error declining friend request' });
+    }
+});
+
 app.delete('/api/users/:id/friends', async (req, res) => {
     const { currentUserId } = req.body;
     const profileObjectId = toObjectId(req.params.id);
@@ -515,8 +670,20 @@ app.delete('/api/users/:id/friends', async (req, res) => {
 
     try {
         await Promise.all([
-            User.findByIdAndUpdate(currentUserObjectId, { $pull: { friends: profileObjectId } }),
-            User.findByIdAndUpdate(profileObjectId, { $pull: { friends: currentUserObjectId } }),
+            User.findByIdAndUpdate(currentUserObjectId, {
+                $pull: {
+                    friends: profileObjectId,
+                    outgoingFriendRequests: profileObjectId,
+                    pendingFriendRequests: profileObjectId,
+                },
+            }),
+            User.findByIdAndUpdate(profileObjectId, {
+                $pull: {
+                    friends: currentUserObjectId,
+                    outgoingFriendRequests: currentUserObjectId,
+                    pendingFriendRequests: currentUserObjectId,
+                },
+            }),
         ]);
 
         const [updatedUser, updatedProfile] = await Promise.all([
@@ -555,8 +722,153 @@ app.delete('/api/users/:id', async (req, res) => {
 // PROJECT ROUTES
 // ==============================
 
-app.get('/api/project-types', (req, res) => {
-    res.json({ success: true, types: PROJECT_TYPES });
+app.get('/api/project-types', async (req, res) => {
+    try {
+        const types = await getProjectTypes();
+        res.json({ success: true, types });
+    } catch (error) {
+        console.error('Fetch project types error:', error);
+        res.status(500).json({ success: false, message: 'Server error loading project types' });
+    }
+});
+
+app.post('/api/admin/project-types', async (req, res) => {
+    const { adminId, name } = req.body;
+    if (!adminId || !name) {
+        return res.status(400).json({ success: false, message: 'Admin identifier and type name are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const normalisedName = name.trim().toLowerCase();
+        if (!normalisedName) {
+            return res.status(400).json({ success: false, message: 'Type name cannot be empty' });
+        }
+
+        const existing = await ProjectType.findOne({ name: normalisedName }).lean();
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Project type already exists' });
+        }
+
+        await ProjectType.create({ name: normalisedName });
+        const types = await getProjectTypes();
+        res.status(201).json({ success: true, types });
+    } catch (error) {
+        console.error('Create project type error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error creating project type' });
+    }
+});
+
+app.delete('/api/admin/project-types/:name', async (req, res) => {
+    const { adminId } = req.body;
+    const name = req.params.name;
+    if (!adminId || !name) {
+        return res.status(400).json({ success: false, message: 'Admin identifier and type name are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const normalisedName = decodeURIComponent(name).toLowerCase();
+        await ProjectType.findOneAndDelete({ name: normalisedName });
+        const types = await getProjectTypes();
+        res.json({ success: true, types });
+    } catch (error) {
+        console.error('Delete project type error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error deleting project type' });
+    }
+});
+
+app.get('/api/admin/dashboard', async (req, res) => {
+    const { adminId } = req.query;
+    if (!adminId) {
+        return res.status(400).json({ success: false, message: 'Admin identifier is required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const [userCount, projectCount, checkinCount, discussionCount] = await Promise.all([
+            User.countDocuments({}),
+            Project.countDocuments({}),
+            Message.countDocuments({ action: 'checked-in' }),
+            DiscussionMessage.countDocuments({}),
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                users: userCount,
+                projects: projectCount,
+                checkins: checkinCount,
+                discussions: discussionCount,
+            },
+        });
+    } catch (error) {
+        console.error('Admin dashboard error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error loading dashboard' });
+    }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+    const { adminId } = req.query;
+    if (!adminId) {
+        return res.status(400).json({ success: false, message: 'Admin identifier is required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const users = await User.find({})
+            .populate('friends', 'username')
+            .populate('projects', 'name')
+            .lean();
+
+        const payload = users.map((user) => ({
+            id: user._id.toString(),
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            friends: user.friends?.length || 0,
+            projects: user.projects?.length || 0,
+        }));
+
+        res.json({ success: true, users: payload });
+    } catch (error) {
+        console.error('Admin users error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error loading users' });
+    }
+});
+
+app.get('/api/admin/projects', async (req, res) => {
+    const { adminId } = req.query;
+    if (!adminId) {
+        return res.status(400).json({ success: false, message: 'Admin identifier is required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const projects = await Project.find({})
+            .populate('ownerId', 'username')
+            .lean();
+
+        const payload = projects.map((project) => ({
+            id: project._id.toString(),
+            name: project.name,
+            owner: project.ownerId?.username || 'unknown',
+            type: project.type,
+            members: project.members?.length || 0,
+            downloads: project.downloads || 0,
+            lastActivity: project.lastActivity ? new Date(project.lastActivity).toISOString() : null,
+        }));
+
+        res.json({ success: true, projects: payload });
+    } catch (error) {
+        console.error('Admin projects error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error loading projects' });
+    }
 });
 
 const assignProjectId = (req, res, next) => {
@@ -697,12 +1009,13 @@ app.post(
             return res.status(400).json({ success: false, message: 'Project version is required' });
         }
 
-        if (!type || !PROJECT_TYPES.includes(type)) {
-            cleanupUploadedFiles(uploadedGroups);
-            return res.status(400).json({ success: false, message: 'Project type is invalid' });
-        }
-
         try {
+            const availableTypes = await getProjectTypes();
+            if (!availableTypes.includes(type)) {
+                cleanupUploadedFiles(uploadedGroups);
+                return res.status(400).json({ success: false, message: 'Project type is invalid' });
+            }
+
             const owner = await User.findById(ownerObjectId).lean();
             if (!owner) {
                 cleanupUploadedFiles(uploadedGroups);
@@ -814,7 +1127,8 @@ app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, r
             updateSet.description = maybeDescription;
         }
         if (maybeType) {
-            if (!PROJECT_TYPES.includes(maybeType)) {
+            const availableTypes = await getProjectTypes();
+            if (!availableTypes.includes(maybeType)) {
                 if (req.file?.path) {
                     fs.unlinkSync(req.file.path);
                 }
@@ -871,7 +1185,10 @@ app.delete('/api/projects/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
-        await Message.deleteMany({ projectId });
+        await Promise.all([
+            Message.deleteMany({ projectId }),
+            DiscussionMessage.deleteMany({ projectId }),
+        ]);
 
         const memberIdSet = new Set((project.members || []).map((id) => id.toString()));
         if (project.ownerId) {
@@ -1158,6 +1475,73 @@ app.post('/api/projects/:id/messages', async (req, res) => {
     }
 });
 
+app.get('/api/projects/:id/discussion', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    if (!projectId) {
+        return res.status(400).json({ success: false, message: 'Invalid project identifier for discussion' });
+    }
+
+    try {
+        const project = await Project.findById(projectId).lean();
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        const discussion = await getDiscussionMessages(projectId);
+        res.json({ success: true, discussion });
+    } catch (error) {
+        console.error('Discussion fetch error:', error);
+        res.status(500).json({ success: false, message: 'Server error loading discussion' });
+    }
+});
+
+app.post('/api/projects/:id/discussion', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    const userObjectId = toObjectId(req.body.userId);
+    const message = (req.body.message || '').trim();
+
+    if (!projectId || !userObjectId) {
+        return res.status(400).json({ success: false, message: 'Invalid identifiers for discussion message' });
+    }
+
+    if (!message) {
+        return res.status(400).json({ success: false, message: 'Message content is required' });
+    }
+
+    try {
+        const project = await Project.findById(projectId).lean();
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        const isMember = (project.members || []).some(
+            (memberId) => memberId.toString() === userObjectId.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: 'Only project members can post to the discussion board' });
+        }
+
+        const discussionMessage = new DiscussionMessage({
+            projectId,
+            userId: userObjectId,
+            message,
+        });
+        await discussionMessage.save();
+
+        const populatedMessage = await DiscussionMessage.findById(discussionMessage._id)
+            .populate('userId', 'username profileImage')
+            .lean();
+
+        res.status(201).json({
+            success: true,
+            message: formatDiscussionMessage(populatedMessage),
+        });
+    } catch (error) {
+        console.error('Discussion post error:', error);
+        res.status(500).json({ success: false, message: 'Server error posting to discussion' });
+    }
+});
+
 app.post('/api/projects/:id/members', async (req, res) => {
     const projectId = toObjectId(req.params.id);
     const requesterId = toObjectId(req.body.requesterId);
@@ -1401,10 +1785,31 @@ app.get('/api/search', async (req, res) => {
         } else if (type === 'tags') {
             // Find projects that contain the tag
             results = await Project.find({ tags: regex }).populate('ownerId', 'username').lean();
+        } else if (type === 'activity') {
+            results = await Message.find({
+                action: 'checked-in',
+                message: regex,
+            })
+                .populate('projectId', 'name image')
+                .populate('userId', 'username profileImage')
+                .lean();
         }
 
         // Format and send the results
         const formattedResults = results.map(item => {
+            if (type === 'activity') {
+                return {
+                    id: item._id.toString(),
+                    name: item.projectId?.name || 'Unknown project',
+                    type: 'activity',
+                    description: item.message || '',
+                    projectId: item.projectId?._id?.toString(),
+                    projectImage: buildPublicUrl(item.projectId?.image),
+                    user: mapUserPreview(item.userId),
+                    time: item.time ? new Date(item.time).toLocaleString() : '',
+                };
+            }
+
             const formatted = {
                 id: item._id?.toString(),
                 name: item.username || item.name,
@@ -1435,72 +1840,4 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`> Terminal server running on port ${PORT}`);
     console.log(`> Access at: http://localhost:${PORT}`);
-});
-app.post('/api/projects', async (req, res) => {
-    const { name, description, type, tags = [], version, ownerId } = req.body;
-
-    if (!name || !description || !type || !version || !ownerId) {
-        return res.status(400).json({ success: false, message: 'Missing required project fields' });
-    }
-
-    const ownerObjectId = toObjectId(ownerId);
-    if (!ownerObjectId) {
-        return res.status(400).json({ success: false, message: 'Invalid owner identifier' });
-    }
-
-    try {
-        const owner = await User.findById(ownerObjectId).lean();
-        if (!owner) {
-            return res.status(404).json({ success: false, message: 'Owner not found' });
-        }
-
-        const normalisedTags = Array.isArray(tags)
-            ? tags
-            : String(tags)
-                .split(',')
-                .map((tag) => tag.trim())
-                .filter(Boolean);
-
-        const newProject = new Project({
-            name: name.trim(),
-            description: description.trim(),
-            ownerId: ownerObjectId,
-            type,
-            tags: normalisedTags,
-            version: version.trim(),
-            members: [ownerObjectId],
-            checkoutStatus: 'checked-in',
-            lastActivity: Date.now(),
-        });
-
-        await newProject.save();
-
-        await User.findByIdAndUpdate(ownerObjectId, { $addToSet: { projects: newProject._id } });
-
-        const creationMessage = new Message({
-            projectId: newProject._id,
-            userId: ownerObjectId,
-            action: 'created',
-            message: 'Project created',
-        });
-        await creationMessage.save();
-
-        await Project.findByIdAndUpdate(newProject._id, { $push: { activity: creationMessage._id } });
-
-        const projectPayload = await Project.findById(newProject._id)
-            .populate('ownerId', 'username profileImage')
-            .lean();
-
-        res.status(201).json({
-            success: true,
-            project: {
-                id: projectPayload._id.toString(),
-                name: projectPayload.name,
-                owner: mapUserPreview(projectPayload.ownerId),
-            },
-        });
-    } catch (error) {
-        console.error('Project creation error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
 });

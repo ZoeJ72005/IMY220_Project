@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import ProfileComponent from '../components/ProfileComponent';
@@ -13,9 +14,40 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [isFriend, setIsFriend] = useState(false);
+  const [friendStatus, setFriendStatus] = useState('none');
 
   const isOwnProfile = user?.id?.toString() === userId;
+
+  const computeFriendStatus = useCallback(
+    (viewer, profile) => {
+      if (!viewer?.id || !profile?.id) {
+        return 'none';
+      }
+
+      if (viewer.id.toString() === profile.id.toString()) {
+        return 'self';
+      }
+
+      const viewerFriends = viewer.friends || [];
+      const pending = viewer.pendingFriendRequests || [];
+      const outgoing = viewer.outgoingFriendRequests || [];
+
+      if (viewerFriends.some((friend) => friend.id === profile.id)) {
+        return 'friend';
+      }
+
+      if (pending.some((request) => request.id === profile.id)) {
+        return 'incoming';
+      }
+
+      if (outgoing.some((request) => request.id === profile.id)) {
+        return 'pending';
+      }
+
+      return 'none';
+    },
+    []
+  );
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -24,13 +56,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
         const data = await response.json();
         if (data.success) {
             setProfileUser(data.profile);
-            const viewerId = user?.id?.toString();
-            if (viewerId) {
-              const profileHasViewer = data.profile.friends.some(friend => friend.id === viewerId);
-              setIsFriend(profileHasViewer);
-            } else {
-              setIsFriend(false);
-            }
+            setFriendStatus(computeFriendStatus(user, data.profile));
         } else {
             console.error(data.message);
         }
@@ -44,6 +70,12 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    if (profileUser) {
+      setFriendStatus(computeFriendStatus(user, profileUser));
+    }
+  }, [user, profileUser, computeFriendStatus]);
 
   const handleEditToggle = () => setIsEditing(prev => !prev);
 
@@ -62,7 +94,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
             setProfileUser(data.profile);
             setIsEditing(false);
 
-            if (isOwnProfile && data.profile && onUserUpdate) {
+            if (isOwnProfile && data.profile && onUserUpdate && user) {
               onUserUpdate({
                 ...user,
                 fullName: data.profile.fullName,
@@ -74,6 +106,8 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
                 languages: data.profile.languages,
               });
             }
+
+            setFriendStatus(computeFriendStatus(user, data.profile));
         } else {
             console.error('Error updating profile:', data.message);
         }
@@ -82,28 +116,74 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
     }
   };
 
-  const handleAddFriend = async () => {
+  const syncFriendData = (updatedUserPayload, updatedProfilePayload) => {
+    if (updatedProfilePayload) {
+      setProfileUser(updatedProfilePayload);
+    }
+
+    if (updatedUserPayload && onUserUpdate) {
+      onUserUpdate(updatedUserPayload);
+    }
+
+    const viewer = updatedUserPayload || user;
+    const profile = updatedProfilePayload || profileUser;
+    if (viewer && profile) {
+      setFriendStatus(computeFriendStatus(viewer, profile));
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
     try {
-      const response = await fetch(`/api/users/${userId}/friends`, {
+      const response = await fetch(`/api/users/${userId}/friend-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentUserId: user.id }),
       });
       const data = await response.json();
       if (data.success) {
-        setIsFriend(true);
-        if (data.profile) {
-          setProfileUser(data.profile);
-        }
-        if (data.user && onUserUpdate) {
-          onUserUpdate(data.user);
-        }
-        alert('Friend added successfully.');
+        syncFriendData(data.user, data.profile);
+        alert('Friend request sent.');
       } else {
-        alert('Failed to add friend: ' + data.message);
+        alert('Failed to send request: ' + data.message);
       }
     } catch (error) {
-      alert('Network error adding friend.');
+      alert('Network error sending friend request.');
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    try {
+      const response = await fetch(`/api/users/${user.id}/friend-requests/${profileUser.id}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.success) {
+        syncFriendData(data.user, data.profile);
+        alert('Friend request accepted.');
+      } else {
+        alert('Failed to accept request: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error accepting friend request.');
+    }
+  };
+
+  const handleDeclineFriendRequest = async () => {
+    try {
+      const response = await fetch(`/api/users/${user.id}/friend-requests/${profileUser.id}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.success) {
+        syncFriendData(data.user, data.profile);
+        alert('Friend request declined.');
+      } else {
+        alert('Failed to decline request: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error declining friend request.');
     }
   };
 
@@ -116,13 +196,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
       });
       const data = await response.json();
       if (data.success) {
-        setIsFriend(false);
-        if (data.profile) {
-          setProfileUser(data.profile);
-        }
-        if (data.user && onUserUpdate) {
-          onUserUpdate(data.user);
-        }
+        syncFriendData(data.user, data.profile);
         alert('Friend removed successfully.');
       } else {
         alert('Failed to remove friend: ' + data.message);
@@ -166,10 +240,11 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
                 profile={profileUser}
                 isOwnProfile={isOwnProfile}
                 onEdit={handleEditToggle}
-                currentUser={user}
-                isFriend={isFriend}
-                onAddFriend={handleAddFriend}
+                friendStatus={friendStatus}
+                onSendFriendRequest={handleSendFriendRequest}
                 onUnfriend={handleUnfriend}
+                onAcceptFriend={handleAcceptFriendRequest}
+                onDeclineFriend={handleDeclineFriendRequest}
               />
             )}
           </aside>
@@ -235,3 +310,4 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
 };
 
 export default ProfilePage;
+

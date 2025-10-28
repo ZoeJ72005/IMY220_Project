@@ -1,8 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-
-const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend, onUnfriend }) => {
+const ProfileComponent = ({
+  profile,
+  isOwnProfile,
+  onEdit,
+  friendStatus,
+  onSendFriendRequest,
+  onUnfriend,
+  onAcceptFriend,
+  onDeclineFriend,
+}) => {
   // Fixes potential issue where joinDate might be an object if MongoDB schema is strict
   const formatDate = (date) => {
     if (date instanceof Date) {
@@ -64,17 +72,60 @@ const ProfileComponent = ({ profile, isOwnProfile, onEdit, isFriend, onAddFriend
       {/* --- Actions Block --- */}
       <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col space-y-2">
         <h3 className="text-sm text-terminal-accent mb-1">&gt; ACTIONS</h3>
-        {isOwnProfile 
-          ? <button onClick={onEdit} className={`${buttonClass('var(--terminal-accent)')} edit-btn`}>EDIT PROFILE</button>
-          : <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-              {isFriend ? (
-                  <button onClick={onUnfriend} className={`${buttonClass('var(--terminal-error)')} friend-btn`}>UNFRIEND</button>
-              ) : (
-                  <button onClick={onAddFriend} className={`${buttonClass('var(--terminal-text)')} friend-btn`}>ADD FRIEND</button>
-              )}
-              <button className={`${buttonClass('var(--terminal-dim)')} message-btn`}>SEND MESSAGE</button>
-            </div>
-        }
+        {isOwnProfile ? (
+          <button
+            onClick={onEdit}
+            className={`${buttonClass('var(--terminal-accent)')} edit-btn`}
+          >
+            EDIT PROFILE
+          </button>
+        ) : (
+          <div className="flex flex-col space-y-2">
+            {friendStatus === 'friend' && (
+              <button
+                onClick={onUnfriend}
+                className={`${buttonClass('var(--terminal-error)')} friend-btn`}
+              >
+                UNFRIEND
+              </button>
+            )}
+
+            {friendStatus === 'incoming' && (
+              <div className="flex flex-col sm:flex-row sm:space-x-2 sm:space-y-0 space-y-2">
+                <button
+                  onClick={onAcceptFriend}
+                  className={`${buttonClass('var(--terminal-accent)')} friend-btn`}
+                >
+                  ACCEPT REQUEST
+                </button>
+                <button
+                  onClick={onDeclineFriend}
+                  className={`${buttonClass('var(--terminal-error)')} friend-btn`}
+                >
+                  DECLINE
+                </button>
+              </div>
+            )}
+
+            {friendStatus === 'pending' && (
+              <button
+                disabled
+                className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-terminal-dim border border-terminal-dim cursor-not-allowed"
+              >
+                REQUEST SENT
+              </button>
+            )}
+
+            {friendStatus === 'none' && (
+              <button
+                onClick={onSendFriendRequest}
+                className={`${buttonClass('var(--terminal-text)')} friend-btn`}
+              >
+                CONNECT
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

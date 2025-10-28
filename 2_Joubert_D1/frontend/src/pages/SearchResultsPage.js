@@ -43,6 +43,11 @@ const SearchResultsPage = ({ user, onLogout }) => {
     if (result.type === 'users') {
       return `/profile/${result.id}`;
     }
+    if (result.type === 'activity') {
+      return result.projectId
+        ? `/project/${result.projectId}`
+        : `/search?term=${encodeURIComponent(result.name)}&type=projects`;
+    }
     return `/project/${result.id}`;
   };
 
@@ -83,7 +88,7 @@ const SearchResultsPage = ({ user, onLogout }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {results.map((result) => (
             <Link
-              key={result.id}
+              key={`${result.type}-${result.id}`}
               to={renderResultLink(result)}
               className="border border-terminal-border rounded-lg p-4 bg-terminal-bg/80 hover:border-terminal-accent transition-all duration-200 shadow-[0_0_10px_rgba(0,255,0,0.1)] no-underline"
             >
@@ -94,10 +99,16 @@ const SearchResultsPage = ({ user, onLogout }) => {
               <p className="text-terminal-dim text-[11px] font-fira-code leading-relaxed">
                 {result.description}
               </p>
-              {result.imageUrl && (
+              {result.type === 'activity' && result.user && (
+                <p className="text-terminal-accent text-[10px] mt-2">
+                  {result.user.username}
+                  {result.time && <span className="text-terminal-dim ml-2">{result.time}</span>}
+                </p>
+              )}
+              {(result.imageUrl || result.projectImage) && (
                 <div className="mt-3 border border-terminal-dim rounded overflow-hidden">
                   <img
-                    src={result.imageUrl}
+                    src={result.imageUrl || result.projectImage}
                     alt={`${result.name} preview`}
                     className="w-full h-32 object-cover"
                   />
@@ -112,3 +123,6 @@ const SearchResultsPage = ({ user, onLogout }) => {
 };
 
 export default SearchResultsPage;
+
+
+
