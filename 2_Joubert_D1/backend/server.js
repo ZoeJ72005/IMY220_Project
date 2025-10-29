@@ -6,15 +6,24 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const crypto = require('crypto');
-const { connectDB, User, Project, Message, ProjectType, DiscussionMessage } = require('./database');
-const mongoose = require('mongoose');
+const {
+    connectDB,
+    getCollections,
+    ObjectId,
+    toObjectId,
+    isValidObjectId,
+} = require('./database');
+
+let Users;
+let Projects;
+let Messages;
+let ProjectTypes;
+let DiscussionMessages;
 
 // require('dotenv').config(); // Removed to use Docker's --env-file
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-connectDB();
 
 // Middleware
 app.use(cors());
@@ -47,7 +56,7 @@ const resolveProjectIdForUpload = (req) => {
     if (req.projectUploadId) {
         return req.projectUploadId.toString();
     }
-    if (req.params?.id && mongoose.Types.ObjectId.isValid(req.params.id)) {
+    if (req.params?.id && isValidObjectId(req.params.id)) {
         return req.params.id.toString();
     }
     throw new Error('Unable to resolve project identifier for upload');
@@ -93,23 +102,43 @@ const DEFAULT_PROJECT_TYPES = [
     'other',
 ];
 
-const ensureDefaultProjectTypes = async () => {
-    const existing = await ProjectType.find({}).lean();
-    const lowerExisting = new Set(existing.map((type) => type.name.toLowerCase()));
+async function ensureDefaultProjectTypes() {
+    if (!ProjectTypes) {
+        return;
+    }
+
+    const existing = await ProjectTypes.find({}).project({ name: 1 }).toArray();
+    const lowerExisting = new Set(existing.map((type) => (type.name || '').toLowerCase()));
     const missing = DEFAULT_PROJECT_TYPES.filter((type) => !lowerExisting.has(type.toLowerCase()));
+
     if (missing.length === 0) {
         return;
     }
-    await ProjectType.insertMany(
+
+    await ProjectTypes.insertMany(
         missing.map((name) => ({
             name: name.toLowerCase(),
+            createdAt: new Date(),
         }))
     );
+}
+
+const initialiseDatabase = async () => {
+    try {
+        const { collections } = await connectDB();
+        Users = collections.Users;
+        Projects = collections.Projects;
+        Messages = collections.Messages;
+        ProjectTypes = collections.ProjectTypes;
+        DiscussionMessages = collections.DiscussionMessages;
+        await ensureDefaultProjectTypes();
+    } catch (error) {
+        console.error('Failed to initialise database:', error);
+        process.exit(1);
+    }
 };
 
-ensureDefaultProjectTypes().catch((error) => {
-    console.error('Failed to seed project types:', error);
-});
+initialiseDatabase();
 
 const normalizeTags = (tagsInput) => {
     if (!tagsInput) {
@@ -168,7 +197,7 @@ const cleanupUploadedFiles = (fileGroups = {}) => {
 };
 
 const createFileRecord = (file, projectId, userId) => ({
-    _id: new mongoose.Types.ObjectId(),
+    _id: new ObjectId(),
     originalName: file.originalname,
     storedName: file.filename,
     mimeType: file.mimetype,
@@ -177,16 +206,6 @@ const createFileRecord = (file, projectId, userId) => ({
     uploadedBy: userId,
     relativePath: getRelativePath(file.path),
 });
-
-// Helper to format Activity Messages for frontend
-const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
-
-const toObjectId = (value) => {
-    if (!isValidObjectId(value)) {
-        return null;
-    }
-    return new mongoose.Types.ObjectId(value);
-};
 
 const mapUserPreview = (user) => {
     if (!user) {
@@ -197,7 +216,7 @@ const mapUserPreview = (user) => {
         return { id: user, username: user, profileImage: '' };
     }
 
-    if (user instanceof mongoose.Types.ObjectId) {
+    if (user instanceof ObjectId) {
         const id = user.toString();
         return { id, username: id, profileImage: '' };
     }
@@ -208,6 +227,172 @@ const mapUserPreview = (user) => {
         username: user.username || 'unknown',
         profileImage: user.profileImage || '',
     };
+};
+
+const buildProjection = (select) => {
+    if (!select) {
+        return undefined;
+    }
+
+    if (typeof select === 'string') {
+        const fields = select
+            .split(/\s+/)
+            .map((field) => field.trim())
+            .filter(Boolean);
+
+        if (fields.length === 0) {
+            return undefined;
+        }
+
+        return fields.reduce((projection, field) => {
+            projection[field] = 1;
+            return projection;
+        }, {});
+    }
+
+    if (Array.isArray(select)) {
+        return select.reduce((projection, field) => {
+            if (field) {
+                projection[field] = 1;
+            }
+            return projection;
+        }, {});
+    }
+
+    if (typeof select === 'object') {
+        return select;
+    }
+
+    return undefined;
+};
+
+const normalizeObjectIdArray = (values = []) =>
+    values
+        .map((value) => {
+            if (value instanceof ObjectId) {
+                return value;
+            }
+            return toObjectId(value);
+        })
+        .filter((value) => value);
+
+const docsToMapById = (docs = []) => {
+    const map = new Map();
+    docs.forEach((doc) => {
+        if (doc?._id) {
+            map.set(doc._id.toString(), doc);
+        }
+    });
+    return map;
+};
+
+const buildPreviewList = (ids = [], docMap = new Map()) =>
+    ids.map((id) => {
+        const key = id instanceof ObjectId ? id.toString() : String(id);
+        return mapUserPreview(docMap.get(key) || { _id: key });
+    });
+
+const fetchUsersByIds = async (ids, select = 'username profileImage') => {
+    const objectIds = normalizeObjectIdArray(ids);
+
+const findUserById = async (id, select) => {
+    if (!Users) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    const projection = buildProjection(select);
+    return Users.findOne({ _id: objectId }, projection ? { projection } : {});
+};
+
+const updateUserById = async (id, update, options = {}) => {
+    if (!Users) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    const returnDocument = options.new ? 'after' : 'before';
+    const result = await Users.findOneAndUpdate(
+        { _id: objectId },
+        update,
+        { returnDocument, upsert: options.upsert || false }
+    );
+    return result.value;
+};
+
+const deleteUserById = async (id) => {
+    if (!Users) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    const result = await Users.findOneAndDelete({ _id: objectId });
+    return result.value;
+};
+
+const findProjectById = async (id) => {
+    if (!Projects) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    return Projects.findOne({ _id: objectId });
+};
+
+const updateProjectById = async (id, update, options = {}) => {
+    if (!Projects) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    const returnDocument = options.new ? 'after' : 'before';
+    const result = await Projects.findOneAndUpdate(
+        { _id: objectId },
+        update,
+        { returnDocument, upsert: options.upsert || false }
+    );
+    return result.value;
+};
+
+const deleteProjectById = async (id) => {
+    if (!Projects) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    const result = await Projects.findOneAndDelete({ _id: objectId });
+    return result.value;
+};
+
+const findMessageById = async (id) => {
+    if (!Messages) {
+        return null;
+    }
+    const objectId = toObjectId(id);
+    if (!objectId) {
+        return null;
+    }
+    return Messages.findOne({ _id: objectId });
+};
+    if (!objectIds.length || !Users) {
+        return [];
+    }
+    const projection = buildProjection(select);
+    const cursor = Users.find({ _id: { $in: objectIds } }, projection ? { projection } : {});
+    const docs = await cursor.toArray();
+    return docs;
 };
 
 const formatActivity = (activity = []) => {
@@ -240,15 +425,34 @@ const buildFilePayload = (projectId, fileDoc) => ({
 });
 
 const buildAuthUserPayload = async (userId) => {
-    const userDoc = await User.findById(userId)
-        .populate('friends', 'username profileImage')
-        .populate('pendingFriendRequests', 'username profileImage')
-        .populate('outgoingFriendRequests', 'username profileImage')
-        .lean();
+    if (!Users) {
+        return null;
+    }
+
+    const userObjectId = toObjectId(userId);
+    if (!userObjectId) {
+        return null;
+    }
+
+    const userDoc = await Users.findOne({ _id: userObjectId });
 
     if (!userDoc) {
         return null;
     }
+
+    const friendIds = normalizeObjectIdArray(userDoc.friends);
+    const pendingIds = normalizeObjectIdArray(userDoc.pendingFriendRequests);
+    const outgoingIds = normalizeObjectIdArray(userDoc.outgoingFriendRequests);
+
+    const [friendDocs, pendingDocs, outgoingDocs] = await Promise.all([
+        fetchUsersByIds(friendIds),
+        fetchUsersByIds(pendingIds),
+        fetchUsersByIds(outgoingIds),
+    ]);
+
+    const friendMap = docsToMapById(friendDocs);
+    const pendingMap = docsToMapById(pendingDocs);
+    const outgoingMap = docsToMapById(outgoingDocs);
 
     return {
         id: userDoc._id.toString(),
@@ -261,34 +465,33 @@ const buildAuthUserPayload = async (userId) => {
         company: userDoc.company || '',
         website: userDoc.website || '',
         languages: userDoc.languages || [],
-        joinDate: userDoc.joinDate ? userDoc.joinDate.toISOString() : null,
+        joinDate: userDoc.joinDate ? new Date(userDoc.joinDate).toISOString() : null,
         role: userDoc.role || 'user',
-        friends: (userDoc.friends || []).map(mapUserPreview),
-        pendingFriendRequests: (userDoc.pendingFriendRequests || []).map(mapUserPreview),
-        outgoingFriendRequests: (userDoc.outgoingFriendRequests || []).map(mapUserPreview),
+        friends: buildPreviewList(friendIds, friendMap),
+        pendingFriendRequests: buildPreviewList(pendingIds, pendingMap),
+        outgoingFriendRequests: buildPreviewList(outgoingIds, outgoingMap),
     };
 };
 
 const buildProfilePayload = async (userId) => {
-    const userDoc = await User.findById(userId)
-        .populate('friends', 'username profileImage')
-        .lean();
-
-    if (!userDoc) {
+    if (!Projects) {
         return null;
     }
 
-    const projects = await Project.find({
-        $or: [
-            { ownerId: userDoc._id },
-            { members: userDoc._id },
-        ],
-    })
-        .populate('ownerId', 'username')
-        .lean();
+    const basePayload = await buildAuthUserPayload(userId);
+    if (!basePayload) {
+        return null;
+    }
+
+    const userObjectId = toObjectId(userId);
+    const projects = await Projects.find({
+        $or: [{ ownerId: userObjectId }, { members: userObjectId }],
+    }).toArray();
 
     const projectSummaries = projects.map((project) => {
-        const isOwner = project.ownerId?._id?.toString() === userDoc._id.toString();
+        const projectOwnerId = project.ownerId ? project.ownerId.toString() : null;
+        const isOwner = projectOwnerId === (userObjectId ? userObjectId.toString() : null);
+
         return {
             id: project._id.toString(),
             name: project.name,
@@ -300,45 +503,103 @@ const buildProfilePayload = async (userId) => {
     });
 
     return {
-        id: userDoc._id.toString(),
-        username: userDoc.username,
-        email: userDoc.email,
-        fullName: userDoc.fullName || '',
-        profileImage: userDoc.profileImage || '',
-        bio: userDoc.bio || '',
-        location: userDoc.location || '',
-        company: userDoc.company || '',
-        website: userDoc.website || '',
-        languages: userDoc.languages || [],
-        joinDate: userDoc.joinDate ? userDoc.joinDate.toISOString() : null,
-        friends: (userDoc.friends || []).map(mapUserPreview),
-        pendingFriendRequests: (userDoc.pendingFriendRequests || []).map(mapUserPreview),
-        outgoingFriendRequests: (userDoc.outgoingFriendRequests || []).map(mapUserPreview),
+        ...basePayload,
         projects: projectSummaries,
     };
 };
 
 const populateProjectDetail = async (projectId) => {
-    return Project.findById(projectId)
-        .populate('ownerId', 'username profileImage')
-        .populate('checkedOutBy', 'username profileImage')
-        .populate({ path: 'members', select: 'username profileImage' })
-        .populate({ path: 'files.uploadedBy', select: 'username profileImage' })
-        .populate({
-            path: 'activity',
-            options: { sort: { time: -1 } },
-            populate: { path: 'userId', select: 'username profileImage' },
-        })
-        .lean();
+    if (!Projects) {
+        return null;
+    }
+
+    const projectObjectId = toObjectId(projectId);
+    if (!projectObjectId) {
+        return null;
+    }
+
+    const project = await Projects.findOne({ _id: projectObjectId });
+    if (!project) {
+        return null;
+    }
+
+    const ownerId = project.ownerId ? toObjectId(project.ownerId) : null;
+    const checkedOutId = project.checkedOutBy ? toObjectId(project.checkedOutBy) : null;
+    const memberIds = normalizeObjectIdArray(project.members);
+    const fileUploaderIds = normalizeObjectIdArray(
+        (project.files || []).map((file) => file.uploadedBy)
+    );
+    const activityIds = normalizeObjectIdArray(project.activity);
+
+    const [ownerDocs, checkedOutDocs, memberDocs, fileUploaderDocs, activityDocs] = await Promise.all([
+        ownerId ? fetchUsersByIds([ownerId]) : Promise.resolve([]),
+        checkedOutId ? fetchUsersByIds([checkedOutId]) : Promise.resolve([]),
+        memberIds.length ? fetchUsersByIds(memberIds) : Promise.resolve([]),
+        fileUploaderIds.length ? fetchUsersByIds(fileUploaderIds) : Promise.resolve([]),
+        activityIds.length
+            ? Messages.find({ _id: { $in: activityIds } }).sort({ time: -1 }).toArray()
+            : Promise.resolve([]),
+    ]);
+
+    const ownerDoc = ownerDocs[0] || (ownerId ? { _id: ownerId } : null);
+    const checkedOutDoc = checkedOutDocs[0] || (checkedOutId ? { _id: checkedOutId } : null);
+    const memberMap = docsToMapById(memberDocs);
+    const fileUploaderMap = docsToMapById(fileUploaderDocs);
+
+    const activityUserIds = normalizeObjectIdArray(activityDocs.map((activity) => activity.userId));
+    const activityUserDocs = await fetchUsersByIds(activityUserIds);
+    const activityUserMap = docsToMapById(activityUserDocs);
+
+    const enrichedFiles = (project.files || []).map((file) => {
+        const uploaderId = file.uploadedBy ? toObjectId(file.uploadedBy) : null;
+        const uploaderDoc = uploaderId ? fileUploaderMap.get(uploaderId.toString()) : null;
+        return {
+            ...file,
+            uploadedBy: uploaderDoc || (uploaderId ? { _id: uploaderId } : null),
+        };
+    });
+
+    const enrichedActivity = activityDocs.map((entry) => {
+        const userId = entry.userId ? entry.userId.toString() : null;
+        return {
+            ...entry,
+            userId: userId ? activityUserMap.get(userId) || { _id: entry.userId } : null,
+        };
+    });
+
+    return {
+        ...project,
+        ownerId: ownerDoc,
+        checkedOutBy: checkedOutDoc,
+        members: memberIds.map((id) => memberMap.get(id.toString()) || { _id: id }),
+        files: enrichedFiles,
+        activity: enrichedActivity,
+    };
 };
 
 const getProjectTypes = async () => {
-    const types = await ProjectType.find({}).sort({ name: 1 }).lean();
+    if (!ProjectTypes) {
+        return [];
+    }
+    const types = await ProjectTypes.find({}).sort({ name: 1 }).toArray();
     return types.map((type) => type.name);
 };
 
 const requireAdmin = async (userId) => {
-    const user = await User.findById(userId).lean();
+    if (!Users) {
+        const error = new Error('Database not initialised');
+        error.statusCode = 500;
+        throw error;
+    }
+
+    const userObjectId = toObjectId(userId);
+    if (!userObjectId) {
+        const error = new Error('Admin privileges required');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const user = await Users.findOne({ _id: userObjectId }, { projection: { role: 1 } });
     if (!user || user.role !== 'admin') {
         const error = new Error('Admin privileges required');
         error.statusCode = 403;
@@ -375,11 +636,32 @@ const formatDiscussionMessage = (message) => ({
 });
 
 const getDiscussionMessages = async (projectId) => {
-    const discussion = await DiscussionMessage.find({ projectId })
+    if (!DiscussionMessages) {
+        return [];
+    }
+
+    const projectObjectId = toObjectId(projectId);
+    if (!projectObjectId) {
+        return [];
+    }
+
+    const discussion = await DiscussionMessages.find({ projectId: projectObjectId })
         .sort({ createdAt: -1 })
-        .populate('userId', 'username profileImage')
-        .lean();
-    return discussion.map(formatDiscussionMessage);
+        .toArray();
+
+    const userIds = normalizeObjectIdArray(discussion.map((message) => message.userId));
+    const userDocs = await fetchUsersByIds(userIds);
+    const userMap = docsToMapById(userDocs);
+
+    return discussion
+        .map((message) =>
+            formatDiscussionMessage({
+                ...message,
+                userId: message.userId
+                    ? userMap.get(message.userId.toString()) || { _id: message.userId }
+                    : null,
+            })
+        );
 };
 
 // ==============================
@@ -396,7 +678,7 @@ app.post('/api/auth/signin', async (req, res) => {
 
     try {
         const normalisedEmail = email.trim().toLowerCase();
-        const user = await User.findOne({ email: normalisedEmail });
+        const user = await Users.findOne({ email: normalisedEmail });
 
         if (!user || user.password !== password) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -430,7 +712,7 @@ app.post('/api/auth/signup', async (req, res) => {
         const trimmedUsername = username.trim();
         const normalisedEmail = email.trim().toLowerCase();
 
-        const existingUser = await User.findOne({
+        const existingUser = await Users.findOne({
             $or: [{ email: normalisedEmail }, { username: trimmedUsername }],
         });
 
@@ -438,10 +720,27 @@ app.post('/api/auth/signup', async (req, res) => {
             return res.status(400).json({ success: false, message: 'User already exists' });
         }
 
-        const newUser = new User({ username: trimmedUsername, email: normalisedEmail, password });
-        await newUser.save();
+        const now = new Date();
+        const insertResult = await Users.insertOne({
+            username: trimmedUsername,
+            email: normalisedEmail,
+            password,
+            fullName: '',
+            profileImage: '',
+            bio: '',
+            location: '',
+            company: '',
+            website: '',
+            languages: [],
+            joinDate: now,
+            role: 'user',
+            friends: [],
+            projects: [],
+            pendingFriendRequests: [],
+            outgoingFriendRequests: [],
+        });
 
-        const payload = await buildAuthUserPayload(newUser._id);
+        const payload = await buildAuthUserPayload(insertResult.insertedId);
         res.json({
             success: true,
             user: payload,
@@ -495,11 +794,7 @@ app.put('/api/users/:id', async (req, res) => {
     });
 
     try {
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            updateData,
-            { new: true, runValidators: true },
-        );
+        const updatedUser = await updateUserById(userId, { $set: updateData }, { new: true });
 
         if (!updatedUser) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -528,8 +823,8 @@ app.post('/api/users/:id/friend-requests', async (req, res) => {
 
     try {
         const [targetUser, requesterUser] = await Promise.all([
-            User.findById(targetUserId).lean(),
-            User.findById(requesterId).lean(),
+            findUserById(targetUserId),
+            findUserById(requesterId),
         ]);
 
         if (!targetUser || !requesterUser) {
@@ -558,8 +853,8 @@ app.post('/api/users/:id/friend-requests', async (req, res) => {
         }
 
         await Promise.all([
-            User.findByIdAndUpdate(targetUserId, { $addToSet: { pendingFriendRequests: requesterId } }),
-            User.findByIdAndUpdate(requesterId, { $addToSet: { outgoingFriendRequests: targetUserId } }),
+            updateUserById(targetUserId, { $addToSet: { pendingFriendRequests: requesterId } }),
+            updateUserById(requesterId, { $addToSet: { outgoingFriendRequests: targetUserId } }),
         ]);
 
         const [updatedRequester, updatedProfile] = await Promise.all([
@@ -588,7 +883,7 @@ app.post('/api/users/:id/friend-requests/:requesterId/accept', async (req, res) 
     }
 
     try {
-        const currentUser = await User.findById(currentUserId).lean();
+        const currentUser = await findUserById(currentUserId);
         if (!currentUser) {
             return res.status(404).json({ success: false, message: 'Current user not found' });
         }
@@ -601,11 +896,11 @@ app.post('/api/users/:id/friend-requests/:requesterId/accept', async (req, res) 
         }
 
         await Promise.all([
-            User.findByIdAndUpdate(currentUserId, {
+            updateUserById(currentUserId, {
                 $pull: { pendingFriendRequests: requesterId },
                 $addToSet: { friends: requesterId },
             }),
-            User.findByIdAndUpdate(requesterId, {
+            updateUserById(requesterId, {
                 $pull: { outgoingFriendRequests: currentUserId },
                 $addToSet: { friends: currentUserId },
             }),
@@ -638,8 +933,8 @@ app.post('/api/users/:id/friend-requests/:requesterId/decline', async (req, res)
 
     try {
         await Promise.all([
-            User.findByIdAndUpdate(currentUserId, { $pull: { pendingFriendRequests: requesterId } }),
-            User.findByIdAndUpdate(requesterId, { $pull: { outgoingFriendRequests: currentUserId } }),
+            updateUserById(currentUserId, { $pull: { pendingFriendRequests: requesterId } }),
+            updateUserById(requesterId, { $pull: { outgoingFriendRequests: currentUserId } }),
         ]);
 
         const [updatedUser, updatedProfile] = await Promise.all([
@@ -670,14 +965,14 @@ app.delete('/api/users/:id/friends', async (req, res) => {
 
     try {
         await Promise.all([
-            User.findByIdAndUpdate(currentUserObjectId, {
+            updateUserById(currentUserObjectId, {
                 $pull: {
                     friends: profileObjectId,
                     outgoingFriendRequests: profileObjectId,
                     pendingFriendRequests: profileObjectId,
                 },
             }),
-            User.findByIdAndUpdate(profileObjectId, {
+            updateUserById(profileObjectId, {
                 $pull: {
                     friends: currentUserObjectId,
                     outgoingFriendRequests: currentUserObjectId,
@@ -708,7 +1003,7 @@ app.delete('/api/users/:id', async (req, res) => {
     // NOTE: Full user deletion logic (cascading deletes for projects, messages, etc.) is complex.
     // For D2, we provide a success response acknowledging the route exists.
     try {
-        const result = await User.findByIdAndDelete(req.params.id);
+        const result = await deleteUserById(req.params.id);
         if (!result) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -789,10 +1084,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
     try {
         await requireAdmin(adminId);
         const [userCount, projectCount, checkinCount, discussionCount] = await Promise.all([
-            User.countDocuments({}),
-            Project.countDocuments({}),
-            Message.countDocuments({ action: 'checked-in' }),
-            DiscussionMessage.countDocuments({}),
+            Users.countDocuments({}),
+            Projects.countDocuments({}),
+            Messages.countDocuments({ action: 'checked-in' }),
+            DiscussionMessages.countDocuments({}),
         ]);
 
         res.json({
@@ -819,10 +1114,7 @@ app.get('/api/admin/users', async (req, res) => {
 
     try {
         await requireAdmin(adminId);
-        const users = await User.find({})
-            .populate('friends', 'username')
-            .populate('projects', 'name')
-            .lean();
+        const users = await Users.find({}).toArray();
 
         const payload = users.map((user) => ({
             id: user._id.toString(),
@@ -849,14 +1141,16 @@ app.get('/api/admin/projects', async (req, res) => {
 
     try {
         await requireAdmin(adminId);
-        const projects = await Project.find({})
-            .populate('ownerId', 'username')
-            .lean();
+        const projects = await Projects.find({}).toArray();
+
+        const ownerIds = normalizeObjectIdArray(projects.map((project) => project.ownerId));
+        const ownerDocs = await fetchUsersByIds(ownerIds, 'username');
+        const ownerMap = docsToMapById(ownerDocs);
 
         const payload = projects.map((project) => ({
             id: project._id.toString(),
             name: project.name,
-            owner: project.ownerId?.username || 'unknown',
+            owner: project.ownerId ? (ownerMap.get(project.ownerId.toString())?.username || 'unknown') : 'unknown',
             type: project.type,
             members: project.members?.length || 0,
             downloads: project.downloads || 0,
@@ -872,7 +1166,7 @@ app.get('/api/admin/projects', async (req, res) => {
 });
 
 const assignProjectId = (req, res, next) => {
-    req.projectUploadId = new mongoose.Types.ObjectId();
+    req.projectUploadId = new ObjectId();
     next();
 };
 
@@ -1194,7 +1488,9 @@ app.delete('/api/projects/:id', async (req, res) => {
         if (project.ownerId) {
             memberIdSet.add(project.ownerId.toString());
         }
-        const memberIds = Array.from(memberIdSet).map((id) => new mongoose.Types.ObjectId(id));
+        const memberIds = Array.from(memberIdSet)
+            .map((id) => toObjectId(id))
+            .filter((id) => id);
         if (memberIds.length > 0) {
             await User.updateMany(
                 { _id: { $in: memberIds } },
