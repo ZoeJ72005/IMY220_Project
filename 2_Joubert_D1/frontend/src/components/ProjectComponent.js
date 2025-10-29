@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import './ComponentBase.css';
+import './ProjectComponent.css';
 
 const ProjectComponent = ({
   project,
@@ -21,16 +23,18 @@ const ProjectComponent = ({
   const [selectedFriend, setSelectedFriend] = useState('');
   const [selectedNewOwner, setSelectedNewOwner] = useState('');
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'checked-out':
-        return 'var(--terminal-warning)';
-      case 'checked-in':
-        return 'var(--terminal-accent)';
-      default:
-        return 'var(--terminal-text)';
-    }
-  };
+  const status = project.checkoutStatus || 'checked-in';
+  const statusLabel =
+    status === 'checked-out'
+      ? `Locked by ${project.checkedOutBy?.username || 'unknown'}`
+      : 'Available for checkout';
+
+  const isCheckedOutByUser =
+    project.checkoutStatus === 'checked-out' && project.checkedOutBy?.id === currentUser.id;
+
+  const createdDate = project.createdDate
+    ? new Date(project.createdDate).toLocaleDateString()
+    : 'Unknown';
 
   const handleAddMember = (event) => {
     event.preventDefault();
@@ -46,132 +50,148 @@ const ProjectComponent = ({
     setSelectedNewOwner('');
   };
 
-  const isCheckedOutByUser =
-    project.checkoutStatus === 'checked-out' && project.checkedOutBy?.id === currentUser.id;
+  const handleCancelTransfer = () => {
+    setSelectedNewOwner('');
+  };
 
-  const createdDate = project.createdDate
-    ? new Date(project.createdDate).toLocaleDateString()
-    : 'Unknown';
+  const members = project.members || [];
 
   return (
-    <div className="flex flex-col gap-4 font-fira-code">
-      <div className="pb-3.5 border-b border-terminal-dim">
-        <h2 className="text-lg text-terminal-text mb-1.5">
-          &gt; {project.name}
-          <span className="cursor animate-blink">_</span>
-        </h2>
-        <div
-          className="flex items-center gap-1.5 text-[10px] font-bold"
-          style={{ color: getStatusColor(project.checkoutStatus) }}
-        >
-          <span className="text-xs animate-pulse">&gt;</span>
-          <span>
-            {project.checkoutStatus === 'checked-out'
-              ? `LOCKED_BY: ${project.checkedOutBy?.username || 'unknown'}`
-              : 'AVAILABLE'}
-          </span>
+    <section className="project-view" aria-labelledby="project-view-title">
+      <header className="project-view__header">
+        <div className="project-view__title-block">
+          <h2 id="project-view-title" className="project-view__title">
+            &gt; {project.name}
+            <span className="project-view__cursor">_</span>
+          </h2>
+          <time className="project-view__timestamp">Created: {createdDate}</time>
         </div>
-      </div>
+        <span className={`project-view__status project-view__status--${status}`}>
+          {statusLabel}
+        </span>
+      </header>
 
       {project.imageUrl && (
-        <div className="border border-terminal-dim rounded bg-terminal-input-bg/40 overflow-hidden">
+        <div className="project-view__hero">
           <button
             type="button"
             onClick={onImageClick}
-            className="w-full"
+            className="project-view__hero-button"
             title="View full-size image"
           >
-            <img src={project.imageUrl} alt={`${project.name} cover`} className="w-full h-40 object-cover" />
+            <img
+              src={project.imageUrl}
+              alt={`${project.name} cover`}
+              className="project-view__hero-image"
+            />
           </button>
         </div>
       )}
 
-      <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col gap-2">
-        <h3 className="text-sm text-terminal-accent mb-1">&gt; DETAILS</h3>
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-dim">OWNER:</span>
-          <Link
-            to={`/profile/${project.owner?.id}`}
-            className="text-xs text-terminal-accent hover:underline"
-          >
-            {project.owner?.username || 'unknown'}
-          </Link>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-dim">TYPE:</span>
-          <span className="text-xs text-terminal-text">
-            {project.type?.replace('-', ' ') || 'unknown'}
-          </span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-dim">VERSION:</span>
-          <span className="text-xs text-terminal-text">{project.version}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-dim">CREATED:</span>
-          <span className="text-xs text-terminal-text">{createdDate}</span>
-        </div>
-      </div>
+      {project.description && (
+        <section className="project-view__card">
+          <h3 className="project-view__card-title">&gt; Overview</h3>
+          <p className="project-view__description">{project.description}</p>
+        </section>
+      )}
 
-  {project.tags?.length > 0 && (
-        <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50">
-          <h3 className="text-sm text-terminal-accent mb-2.5">&gt; LANGUAGES</h3>
-          <div className="flex flex-wrap gap-2">
+      <section className="project-view__card project-view__card--details">
+        <h3 className="project-view__card-title">&gt; Project Details</h3>
+        <dl className="project-view__details">
+          <div className="project-view__details-row">
+            <dt>Owner</dt>
+            <dd>
+              <Link to={`/profile/${project.owner?.id}`} className="project-view__link">
+                {project.owner?.username || 'unknown'}
+              </Link>
+            </dd>
+          </div>
+          <div className="project-view__details-row">
+            <dt>Type</dt>
+            <dd>{project.type?.replace('-', ' ') || 'unknown'}</dd>
+          </div>
+          <div className="project-view__details-row">
+            <dt>Version</dt>
+            <dd>{project.version}</dd>
+          </div>
+          <div className="project-view__details-row">
+            <dt>Members</dt>
+            <dd>{members.length}</dd>
+          </div>
+        </dl>
+        {isCheckedOutByUser && (
+          <p className="project-view__notice">
+            You currently have this project checked out. Remember to check it back in once your
+            updates are complete.
+          </p>
+        )}
+      </section>
+
+      {project.tags?.length > 0 && (
+        <section className="project-view__card">
+          <h3 className="project-view__card-title">&gt; Languages / Tags</h3>
+          <div className="project-view__tags">
             {project.tags.map((tag) => (
               <button
                 key={tag}
                 type="button"
+                className="project-view__tag"
                 onClick={() => onTagClick?.(tag)}
-                className="bg-transparent border border-terminal-dim text-terminal-text px-2 py-1 rounded text-[10px] hover:border-terminal-accent hover:text-terminal-accent transition-colors duration-200"
               >
                 #{tag}
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50">
-        <h3 className="text-sm text-terminal-accent mb-2.5">
-          &gt; MEMBERS ({project.members?.length || 0})
+      <section className="project-view__card">
+        <h3 className="project-view__card-title">
+          &gt; Team Members <span className="project-view__count">({members.length})</span>
         </h3>
-        <div className="flex flex-col gap-2">
-          {project.members?.map((member) => {
-            const canRemove = isOwner && member.id !== project.owner?.id;
-            return (
-              <div key={member.id} className="flex items-center justify-between text-xs">
-                <Link
-                  to={`/profile/${member.id}`}
-                  className="text-terminal-accent hover:underline"
-                >
-                  {member.username}
-                </Link>
-                {canRemove && (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveMember?.(member.id)}
-                    className="terminal-button text-[10px] px-2 py-1 bg-transparent text-terminal-error border border-terminal-error"
-                  >
-                    REMOVE
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        {members.length === 0 ? (
+          <p className="project-view__empty">No members assigned yet.</p>
+        ) : (
+          <ul className="project-view__members">
+            {members.map((member) => {
+              const canRemove = isOwner && member.id !== project.owner?.id;
+              return (
+                <li key={member.id} className="project-view__member">
+                  <Link to={`/profile/${member.id}`} className="project-view__member-link">
+                    {member.username}
+                  </Link>
+                  {member.role && <span className="project-view__member-role">{member.role}</span>}
+                  {canRemove && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveMember?.(member.id)}
+                      className="terminal-button project-view__member-action project-view__member-action--danger"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       {isMember && (
-        <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col gap-3">
-          <h3 className="text-sm text-terminal-accent mb-1">&gt; TEAM_ACTIONS</h3>
+        <section className="project-view__card project-view__card--actions">
+          <h3 className="project-view__card-title">&gt; Team Actions</h3>
+
           {availableFriends.length > 0 ? (
-            <form onSubmit={handleAddMember} className="flex flex-col gap-2">
-              <label className="text-[10px] text-terminal-dim">ADD_MEMBER:</label>
-              <div className="flex gap-2">
+            <form onSubmit={handleAddMember} className="project-view__form">
+              <label className="project-view__form-label" htmlFor="project-add-member">
+                Invite collaborator
+              </label>
+              <div className="project-view__form-controls">
                 <select
+                  id="project-add-member"
                   value={selectedFriend}
                   onChange={(event) => setSelectedFriend(event.target.value)}
-                  className="terminal-input text-xs flex-1"
+                  className="project-view__select"
                 >
                   <option value="">Select a friend</option>
                   {availableFriends.map((friend) => (
@@ -182,30 +202,33 @@ const ProjectComponent = ({
                 </select>
                 <button
                   type="submit"
-                  className="terminal-button text-[11px] px-3 py-2 bg-transparent text-terminal-accent border border-terminal-accent"
+                  className="terminal-button project-view__form-button project-view__form-button--primary"
                 >
-                  ADD
+                  Add
                 </button>
               </div>
             </form>
           ) : (
-            <p className="text-[11px] text-terminal-dim">
+            <p className="project-view__hint">
               All of your friends already belong to this project.
             </p>
           )}
 
           {isOwner && (
-            <form onSubmit={handleTransferOwnership} className="flex flex-col gap-2 border-t border-terminal-dim pt-3">
-              <label className="text-[10px] text-terminal-dim">TRANSFER_OWNERSHIP:</label>
-              <div className="flex gap-2">
+            <form onSubmit={handleTransferOwnership} className="project-view__form">
+              <label className="project-view__form-label" htmlFor="project-transfer-owner">
+                Transfer ownership
+              </label>
+              <div className="project-view__form-controls">
                 <select
+                  id="project-transfer-owner"
                   value={selectedNewOwner}
                   onChange={(event) => setSelectedNewOwner(event.target.value)}
-                  className="terminal-input text-xs flex-1"
+                  className="project-view__select"
                 >
                   <option value="">Select member</option>
-                  {project.members
-                    ?.filter((member) => member.id !== project.owner?.id)
+                  {members
+                    .filter((member) => member.id !== project.owner?.id)
                     .map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.username}
@@ -214,59 +237,75 @@ const ProjectComponent = ({
                 </select>
                 <button
                   type="submit"
-                  className="terminal-button text-[11px] px-3 py-2 bg-transparent text-terminal-warning border border-terminal-warning"
+                  className="terminal-button project-view__form-button project-view__form-button--warning"
                 >
-                  TRANSFER
+                  Transfer
                 </button>
+                {selectedNewOwner && (
+                  <button
+                    type="button"
+                    onClick={handleCancelTransfer}
+                    className="terminal-button project-view__form-button project-view__form-button--ghost"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </form>
           )}
-        </div>
+        </section>
       )}
 
-      <div className="p-3 border border-terminal-dim rounded bg-terminal-input-bg/50 flex flex-col space-y-2">
-        <h3 className="text-sm text-terminal-accent mb-1">&gt; ACTIONS</h3>
-        <button
-          onClick={onDownload}
-          className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-[var(--terminal-text)] border-[var(--terminal-text)] hover:bg-[rgba(0,255,0,0.1)]"
-        >
-          DOWNLOAD
-        </button>
-
-        {isMember && project.checkoutStatus === 'checked-in' && (
+      <section className="project-view__card project-view__card--cta">
+        <h3 className="project-view__card-title">&gt; Actions</h3>
+        <div className="project-view__cta-buttons">
           <button
-            onClick={onCheckout}
-            className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[rgba(255,189,46,0.1)]"
+            type="button"
+            onClick={onDownload}
+            className="terminal-button project-view__cta project-view__cta--neutral"
           >
-            CHECKOUT
+            Download
           </button>
-        )}
 
-        <button
-          onClick={onShowCheckin}
-          className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[rgba(0,255,0,0.1)]"
-        >
-          OPEN_CHECKIN_FORM
-        </button>
+          {isMember && project.checkoutStatus === 'checked-in' && (
+            <button
+              type="button"
+              onClick={onCheckout}
+              className="terminal-button project-view__cta project-view__cta--warning"
+            >
+              Checkout
+            </button>
+          )}
 
-        {isOwner && (
-          <div className="pt-2 mt-2 border-t border-terminal-dim flex flex-col gap-2">
-            <button
-              onClick={onEdit}
-              className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[rgba(0,255,0,0.1)]"
-            >
-              EDIT_PROJECT
-            </button>
-            <button
-              onClick={onDelete}
-              className="terminal-button text-xs px-2 py-2 w-full text-center bg-transparent text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[rgba(255,0,0,0.1)]"
-            >
-              DELETE_PROJECT
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          <button
+            type="button"
+            onClick={onShowCheckin}
+            className="terminal-button project-view__cta project-view__cta--primary"
+          >
+            Open Check-in Form
+          </button>
+
+          {isOwner && (
+            <>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="terminal-button project-view__cta project-view__cta--primary"
+              >
+                Edit Project
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="terminal-button project-view__cta project-view__cta--danger"
+              >
+                Delete Project
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+    </section>
   );
 };
 

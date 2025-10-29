@@ -1,0 +1,230 @@
+.project-form {
+  font-family: 'Fira Code', monospace;
+  color: var(--terminal-text);
+  display: grid;
+  gap: 1.6rem;
+  padding: 2rem;
+  border: 1px solid rgba(0, 255, 0, 0.25);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 26px 45px rgba(0, 0, 0, 0.45), inset 0 0 28px rgba(0, 0, 0, 0.35);
+}
+
+.project-form__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.25);
+}
+
+.project-form__title {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--terminal-accent);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.project-form__cursor {
+  animation: blink 1s infinite;
+}
+
+.project-form__subtitle {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--terminal-dim);
+  line-height: 1.5;
+}
+
+.project-form__meta {
+  display: grid;
+  gap: 0.35rem;
+  align-self: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(0, 255, 0, 0.28);
+  border-radius: 10px;
+  background: rgba(0, 20, 0, 0.55);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
+}
+
+.project-form__meta-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.project-form__meta-value {
+  font-size: 0.85rem;
+  color: var(--terminal-text);
+  font-weight: 600;
+}
+
+.project-form__alert {
+  border: 1px solid var(--terminal-error);
+  background: rgba(255, 0, 0, 0.1);
+  color: var(--terminal-error);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+}
+
+.project-form__body {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.project-form__grid {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.project-form__group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.project-form__label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.project-form__input,
+.project-form__textarea {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+  color: var(--terminal-text);
+  background: linear-gradient(135deg, rgba(0, 17, 0, 0.75), rgba(0, 32, 0, 0.6));
+  border: 1px solid rgba(0, 255, 0, 0.28);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-form__input:focus,
+.project-form__textarea:focus {
+  outline: none;
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.25);
+}
+
+.project-form__input--select {
+  appearance: none;
+  background-image: linear-gradient(135deg, rgba(0, 17, 0, 0.75), rgba(0, 32, 0, 0.6));
+  cursor: pointer;
+}
+
+.project-form__input--file {
+  padding: 0.6rem 0.75rem;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.project-form__textarea {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.project-form__hint {
+  font-size: 0.68rem;
+  color: var(--terminal-dim);
+  line-height: 1.4;
+}
+
+.project-form__error {
+  font-size: 0.7rem;
+  color: var(--terminal-error);
+}
+
+.project-form__preview {
+  margin-top: 0.6rem;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 255, 0, 0.22);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.project-form__preview-label {
+  font-size: 0.68rem;
+  color: var(--terminal-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.project-form__preview-image {
+  max-height: 150px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.project-form__file-list {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.project-form__file-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+}
+
+.project-form__file-name {
+  color: var(--terminal-text);
+}
+
+.project-form__file-size {
+  color: var(--terminal-dim);
+}
+
+.project-form__submit {
+  justify-self: end;
+  padding: 0.8rem 2.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--terminal-text);
+  background: radial-gradient(circle at top, rgba(0, 90, 0, 0.92), rgba(0, 32, 0, 0.78));
+  border: 1px solid rgba(0, 255, 0, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.project-form__submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 26px rgba(0, 255, 0, 0.28);
+}
+
+.project-form__submit:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+@media (max-width: 720px) {
+  .project-form {
+    padding: 1.5rem;
+  }
+
+  .project-form__submit {
+    justify-self: stretch;
+  }
+}

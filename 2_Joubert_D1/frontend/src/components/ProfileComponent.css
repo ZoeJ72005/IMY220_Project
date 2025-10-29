@@ -1,0 +1,211 @@
+.profile-component {
+  display: grid;
+  gap: 1.4rem;
+  font-family: 'Fira Code', monospace;
+  color: var(--terminal-text);
+}
+
+.profile-component__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.22);
+}
+
+.profile-component__avatar-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.profile-component__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 0, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 18px rgba(0, 255, 0, 0.15);
+}
+
+.profile-component__status-indicator {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--terminal-accent);
+  border: 2px solid #000;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.45);
+}
+
+.profile-component__headline {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.profile-component__username {
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--terminal-text);
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.profile-component__cursor {
+  font-size: 1.1rem;
+  animation: blink 1s infinite;
+}
+
+.profile-component__name {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.profile-component__subtext {
+  font-size: 0.7rem;
+  color: var(--terminal-dim);
+  letter-spacing: 0.04em;
+}
+
+.profile-component__card {
+  border: 1px solid rgba(0, 255, 0, 0.22);
+  border-radius: 14px;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(0, 20, 0, 0.75), rgba(0, 32, 0, 0.6));
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-component__card--grid {
+  gap: 1rem;
+}
+
+.profile-component__card-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--terminal-accent);
+  margin: 0;
+}
+
+.profile-component__card-content {
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.profile-component__details {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-component__details-row {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.profile-component__details-row dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.profile-component__details-row dd {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--terminal-text);
+}
+
+.profile-component__details-row a {
+  color: var(--terminal-accent);
+  text-decoration: none;
+}
+
+.profile-component__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.profile-component__tag {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-text);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 0, 0.22);
+  border-radius: 6px;
+}
+
+.profile-component__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 0, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--terminal-text);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-component__action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.22);
+}
+
+.profile-component__action--primary {
+  border-color: var(--terminal-accent);
+  color: var(--terminal-accent);
+}
+
+.profile-component__action--secondary {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: var(--terminal-text);
+}
+
+.profile-component__action--danger {
+  border-color: var(--terminal-error);
+  color: var(--terminal-error);
+}
+
+.profile-component__action--disabled {
+  border-color: rgba(0, 255, 0, 0.2);
+  color: var(--terminal-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.profile-component__action-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .profile-component__header {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .profile-component__headline {
+    justify-items: center;
+  }
+}

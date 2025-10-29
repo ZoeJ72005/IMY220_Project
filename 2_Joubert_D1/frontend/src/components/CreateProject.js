@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import './CreateProject.css';
 
 const IMAGE_MAX_SIZE_MB = 5;
 
@@ -210,11 +211,6 @@ const CreateProject = ({ user, onProjectCreated }) => {
     }));
   }, [selectedFiles]);
 
-  const buttonClass = (colorVar) => `
-    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
-    hover:bg-[rgba(0,255,0,0.1)] w-full
-  `;
-
   const formatFileSize = (bytes) => {
     if (!bytes && bytes !== 0) return '';
     const units = ['B', 'KB', 'MB', 'GB'];
@@ -228,198 +224,171 @@ const CreateProject = ({ user, onProjectCreated }) => {
   };
 
   return (
-    <div className="font-fira-code">
-      <h3 className="text-lg text-terminal-accent font-bold mb-4">
-        &gt; CREATE_NEW_PROJECT
-        <span className="cursor animate-blink">_</span>
-      </h3>
-
-      {errors.general && (
-        <div className="text-terminal-error text-xs mb-4 p-2 border border-terminal-error bg-terminal-bg/40">
-          ERROR: {errors.general}
+    <section className="project-form project-form--create">
+      <header className="project-form__header">
+        <div>
+          <h3 className="project-form__title">
+            &gt; Create New Project<span className="project-form__cursor">_</span>
+          </h3>
+          <p className="project-form__subtitle">
+            Spin up a fresh repository space and configure the first release notes.
+          </p>
         </div>
-      )}
+        <div className="project-form__meta">
+          <span className="project-form__meta-label">Logged in as</span>
+          <span className="project-form__meta-value">{user?.username || 'anonymous'}</span>
+        </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-name"
-          >
-            PROJECT_NAME:
-          </label>
-          <input
-            type="text"
-            id="project-name"
-            name="name"
-            className="form-input terminal-input"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="retro-terminal"
-            required
-          />
-          {errors.name && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.name}</div>
-          )}
+      {errors.general && <div className="project-form__alert">Error: {errors.general}</div>}
+
+      <form onSubmit={handleSubmit} className="project-form__body" noValidate>
+        <div className="project-form__grid">
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-name">
+              Project name
+            </label>
+            <input
+              type="text"
+              id="project-name"
+              name="name"
+              className="project-form__input"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Awesome Terminal Portal"
+              required
+            />
+            {errors.name && <div className="project-form__error">{errors.name}</div>}
+          </div>
+
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-type">
+              Project type
+            </label>
+            <select
+              id="project-type"
+              name="type"
+              className="project-form__input project-form__input--select"
+              value={formData.type}
+              onChange={handleChange}
+              disabled={loadingTypes}
+            >
+              {projectTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type.toUpperCase().replace('-', '_')}
+                </option>
+              ))}
+            </select>
+            {errors.type && <div className="project-form__error">{errors.type}</div>}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-description"
-          >
-            DESCRIPTION:
+        <div className="project-form__group">
+          <label className="project-form__label" htmlFor="project-description">
+            Project description
           </label>
           <textarea
             id="project-description"
             name="description"
-            className="form-input terminal-input"
+            className="project-form__textarea"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Describe your project..."
+            placeholder="Describe what your project does..."
             rows="4"
             required
           />
-          {errors.description && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.description}</div>
-          )}
+          {errors.description && <div className="project-form__error">{errors.description}</div>}
         </div>
 
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-type"
-          >
-            PROJECT_TYPE:
-          </label>
-          <select
-            id="project-type"
-            name="type"
-            className="form-input terminal-input"
-            value={formData.type}
-            onChange={handleChange}
-            disabled={loadingTypes}
-          >
-            {projectTypes.map((type) => (
-              <option key={type} value={type}>
-                {type.toUpperCase().replace('-', '_')}
-              </option>
-            ))}
-          </select>
-          {errors.type && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.type}</div>
-          )}
+        <div className="project-form__grid">
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-tags">
+              Languages &amp; hashtags
+            </label>
+            <input
+              type="text"
+              id="project-tags"
+              name="tags"
+              className="project-form__input"
+              value={formData.tags}
+              onChange={handleChange}
+              placeholder="#javascript, #react, #css"
+            />
+            <p className="project-form__hint">
+              Separate tags with commas or spaces. Example: #javascript, #react
+            </p>
+          </div>
+
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-version">
+              Initial version
+            </label>
+            <input
+              type="text"
+              id="project-version"
+              name="version"
+              className="project-form__input"
+              value={formData.version}
+              onChange={handleChange}
+              required
+            />
+            {errors.version && <div className="project-form__error">{errors.version}</div>}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-tags"
-          >
-            LANGUAGES_HASHTAGS:
-          </label>
-          <input
-            type="text"
-            id="project-tags"
-            name="tags"
-            className="form-input terminal-input"
-            value={formData.tags}
-            onChange={handleChange}
-            placeholder="#javascript, #react, #css"
-          />
-          <p className="text-terminal-dim text-[11px]">
-            Separate multiple hashtags with commas or spaces. Example: #javascript, #react
-          </p>
+        <div className="project-form__grid">
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-image">
+              Project image (max {IMAGE_MAX_SIZE_MB}MB)
+            </label>
+            <input
+              type="file"
+              id="project-image"
+              accept="image/*"
+              className="project-form__input project-form__input--file"
+              onChange={handleImageChange}
+            />
+            {errors.projectImage && <div className="project-form__error">{errors.projectImage}</div>}
+            {imagePreview && (
+              <div className="project-form__preview">
+                <span className="project-form__preview-label">Preview</span>
+                <img src={imagePreview} alt="Project preview" className="project-form__preview-image" />
+              </div>
+            )}
+          </div>
+
+          <div className="project-form__group">
+            <label className="project-form__label" htmlFor="project-files">
+              Project files (initial upload)
+            </label>
+            <input
+              type="file"
+              id="project-files"
+              className="project-form__input project-form__input--file"
+              multiple
+              onChange={handleFilesChange}
+            />
+            <p className="project-form__hint">
+              Add starter code, documentation, or media assets. More files can be checked in later.
+            </p>
+            {selectedFilesSummary.length > 0 && (
+              <div className="project-form__file-list">
+                {selectedFilesSummary.map((file) => (
+                  <div key={file.name} className="project-form__file-item">
+                    <span className="project-form__file-name">{file.name}</span>
+                    <span className="project-form__file-size">{formatFileSize(file.size)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-version"
-          >
-            INITIAL_VERSION:
-          </label>
-          <input
-            type="text"
-            id="project-version"
-            name="version"
-            className="form-input terminal-input"
-            value={formData.version}
-            onChange={handleChange}
-            required
-          />
-          {errors.version && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.version}</div>
-          )}
-        </div>
-
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-image"
-          >
-            PROJECT_IMAGE (max {IMAGE_MAX_SIZE_MB}MB):
-          </label>
-          <input
-            type="file"
-            id="project-image"
-            accept="image/*"
-            className="form-input terminal-input"
-            onChange={handleImageChange}
-          />
-          {errors.projectImage && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.projectImage}</div>
-          )}
-          {imagePreview && (
-            <div className="mt-2 border border-terminal-dim rounded bg-terminal-input-bg/50 p-2 inline-flex flex-col items-start gap-2">
-              <span className="text-[11px] text-terminal-dim">Preview</span>
-              <img
-                src={imagePreview}
-                alt="Project preview"
-                className="max-h-32 rounded border border-terminal-border object-cover"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-1">
-          <label
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            htmlFor="project-files"
-          >
-            PROJECT_FILES (initial upload):
-          </label>
-          <input
-            type="file"
-            id="project-files"
-            className="form-input terminal-input"
-            multiple
-            onChange={handleFilesChange}
-          />
-          <p className="text-terminal-dim text-[11px]">
-            You can add code files, documentation, or media assets. Files can also be added during later check-ins.
-          </p>
-          {selectedFilesSummary.length > 0 && (
-            <div className="border border-terminal-dim rounded bg-terminal-input-bg/40 p-2 space-y-1 text-[11px] text-terminal-text">
-              {selectedFilesSummary.map((file) => (
-                <div key={file.name} className="flex justify-between">
-                  <span>{file.name}</span>
-                  <span className="text-terminal-dim">{formatFileSize(file.size)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          className={`${buttonClass('var(--terminal-accent)')} mt-6`}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'CREATING...' : 'CREATE_PROJECT'}
+        <button type="submit" className="project-form__submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating…' : 'Create Project'}
         </button>
       </form>
-    </div>
+    </section>
   );
 };
 

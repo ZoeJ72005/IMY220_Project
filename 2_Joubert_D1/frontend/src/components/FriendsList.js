@@ -1,45 +1,54 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import './FriendsList.css';
 
 const FriendsList = ({ friends, isOwnProfile }) => {
   return (
-    <div className="font-fira-code">
-      <h3 className="text-base font-bold text-terminal-accent mb-4 border-b border-terminal-dim pb-2">
-        &gt; {isOwnProfile ? 'MY_NETWORK' : 'USER_NETWORK'}
-        <span className="cursor animate-blink">_</span>
-      </h3>
-      
+    <section className="friends-list" aria-live="polite">
+      <header className="friends-list__header">
+        <h3 className="friends-list__title">
+          &gt; {isOwnProfile ? 'My Network' : 'User Network'}
+          <span className="friends-list__cursor">_</span>
+        </h3>
+        <p className="friends-list__subtitle">
+          Stay connected with developers collaborating on your projects.
+        </p>
+      </header>
+
       {friends.length === 0 ? (
-        <div className="text-center p-8 border-2 border-dashed border-terminal-dim rounded-lg text-terminal-text">
-          <p>No connections found</p>
+        <div className="friends-list__empty">
+          <p>No connections found yet.</p>
           {isOwnProfile && (
-            <p className="text-xs text-terminal-dim mt-2">Connect with other developers to expand your network!</p>
+            <p>Send a connection request to start building your network.</p>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {friends.map(friend => (
-            <div key={friend.id} className="p-3 border border-terminal-dim rounded-lg bg-[rgba(0,17,0,0.3)] flex flex-col items-center text-center transition-all duration-300 hover:border-terminal-accent hover:shadow-[0_0_10px_rgba(0,255,0,0.2)]">
-              <img 
-                src={friend.profileImage || 'https://via.placeholder.com/80'} 
-                alt={`${friend.username} profile`}
-                className="w-16 h-16 rounded-full object-cover mb-2 border border-terminal-text"
-              />
-              <div className="text-sm font-bold">
-                <Link to={`/profile/${friend.id}`} className="text-terminal-text hover:text-terminal-accent no-underline">
+        <div className="friends-list__grid">
+          {friends.map((friend) => (
+            <article key={friend.id} className="friends-list__card">
+              <div className="friends-list__avatar-wrapper">
+                <img
+                  src={friend.profileImage || 'https://via.placeholder.com/96'}
+                  alt={`${friend.username} profile`}
+                  className="friends-list__avatar"
+                />
+              </div>
+              <h4 className="friends-list__name">
+                <Link to={`/profile/${friend.id}`} className="friends-list__link">
                   {friend.username}
                 </Link>
-              </div>
+              </h4>
+              {friend.fullName && <p className="friends-list__meta">{friend.fullName}</p>}
               {!isOwnProfile && (
-                 <button className="terminal-button mt-2 text-[10px] py-1 px-2 border-terminal-dim text-terminal-dim">
-                    CONNECT
-                 </button>
+                <button type="button" className="friends-list__action">
+                  Connect
+                </button>
               )}
-            </div>
+            </article>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import './ComponentBase.css';
+import './EditProject.css';
 
 const IMAGE_MAX_SIZE_MB = 5;
 
@@ -47,33 +49,6 @@ const EditProject = ({ project, currentUser, onSave, onCancel }) => {
     };
   }, [imagePreview]);
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Project name is required';
-    } else if (formData.name.trim().length < 3) {
-      newErrors.name = 'Project name must be at least 3 characters';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Project description is required';
-    } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Description must be at least 10 characters';
-    }
-
-    if (!formData.type) {
-      newErrors.type = 'Project type is required';
-    }
-
-    if (!formData.version.trim()) {
-      newErrors.version = 'Version is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({
@@ -120,6 +95,33 @@ const EditProject = ({ project, currentUser, onSave, onCancel }) => {
     }));
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Project name is required';
+    } else if (formData.name.trim().length < 3) {
+      newErrors.name = 'Project name must be at least 3 characters';
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Project description is required';
+    } else if (formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
+    }
+
+    if (!formData.type) {
+      newErrors.type = 'Project type is required';
+    }
+
+    if (!formData.version.trim()) {
+      newErrors.version = 'Version is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -164,155 +166,152 @@ const EditProject = ({ project, currentUser, onSave, onCancel }) => {
     onCancel();
   };
 
-  const buttonClass = (colorVar) => `
-    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
-    hover:bg-[rgba(0,255,0,0.1)] w-full sm:w-auto
-  `;
-
   return (
-    <div className="font-fira-code">
-      <h3 className="text-lg text-terminal-accent font-bold mb-4">
-        &gt; EDIT_PROJECT
-        <span className="cursor animate-blink">_</span>
-      </h3>
+    <section className="edit-project" aria-labelledby="edit-project-title">
+      <header className="edit-project__header">
+        <h3 id="edit-project-title" className="edit-project__title">
+          &gt; Edit Project<span className="edit-project__cursor">_</span>
+        </h3>
+        <p className="edit-project__subtitle">
+          Update the repository metadata and imagery before publishing a new build.
+        </p>
+      </header>
 
-      {errors.general && (
-        <div className="text-terminal-error text-xs mb-4 p-2 border border-terminal-error bg-terminal-bg/40">
-          ERROR: {errors.general}
+      {errors.general && <div className="edit-project__alert">Error: {errors.general}</div>}
+
+      <form onSubmit={handleSubmit} className="edit-project__form" noValidate>
+        <div className="edit-project__grid">
+          <div className="edit-project__group">
+            <label className="edit-project__label" htmlFor="edit-project-name">
+              Project name
+            </label>
+            <input
+              type="text"
+              id="edit-project-name"
+              name="name"
+              className="edit-project__input"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Refine your project name"
+              required
+            />
+            {errors.name && <div className="edit-project__error">{errors.name}</div>}
+          </div>
+
+          <div className="edit-project__group">
+            <label className="edit-project__label" htmlFor="edit-project-type">
+              Project type
+            </label>
+            <select
+              id="edit-project-type"
+              name="type"
+              className="edit-project__input edit-project__input--select"
+              value={formData.type}
+              onChange={handleChange}
+            >
+              {projectTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type.toUpperCase().replace('-', '_')}
+                </option>
+              ))}
+            </select>
+            {errors.type && <div className="edit-project__error">{errors.type}</div>}
+          </div>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-name">
-            PROJECT_NAME:
-          </label>
-          <input
-            type="text"
-            id="edit-project-name"
-            name="name"
-            className="form-input terminal-input"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
-          {errors.name && <div className="text-terminal-error text-xs">ERROR: {errors.name}</div>}
-        </div>
-
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-description">
-            DESCRIPTION:
+        <div className="edit-project__group edit-project__group--textarea">
+          <label className="edit-project__label" htmlFor="edit-project-description">
+            Description
           </label>
           <textarea
             id="edit-project-description"
             name="description"
-            className="form-input terminal-input"
+            className="edit-project__textarea"
             value={formData.description}
             onChange={handleChange}
-            rows="4"
+            rows={4}
+            placeholder="Describe what changed in this release..."
             required
           />
-          {errors.description && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.description}</div>
-          )}
+          {errors.description && <div className="edit-project__error">{errors.description}</div>}
         </div>
 
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-type">
-            PROJECT_TYPE:
-          </label>
-          <select
-            id="edit-project-type"
-            name="type"
-            className="form-input terminal-input"
-            value={formData.type}
-            onChange={handleChange}
-          >
-            {projectTypes.map((type) => (
-              <option key={type} value={type}>
-                {type.toUpperCase().replace('-', '_')}
-              </option>
-            ))}
-          </select>
-          {errors.type && <div className="text-terminal-error text-xs">ERROR: {errors.type}</div>}
+        <div className="edit-project__grid">
+          <div className="edit-project__group">
+            <label className="edit-project__label" htmlFor="edit-project-tags">
+              Languages &amp; hashtags
+            </label>
+            <input
+              type="text"
+              id="edit-project-tags"
+              name="tags"
+              className="edit-project__input"
+              value={formData.tags}
+              onChange={handleChange}
+              placeholder="#javascript, #react"
+            />
+          </div>
+
+          <div className="edit-project__group">
+            <label className="edit-project__label" htmlFor="edit-project-version">
+              Version
+            </label>
+            <input
+              type="text"
+              id="edit-project-version"
+              name="version"
+              className="edit-project__input"
+              value={formData.version}
+              onChange={handleChange}
+              required
+            />
+            {errors.version && <div className="edit-project__error">{errors.version}</div>}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-version">
-            VERSION:
-          </label>
-          <input
-            type="text"
-            id="edit-project-version"
-            name="version"
-            className="form-input terminal-input"
-            value={formData.version}
-            onChange={handleChange}
-            required
-          />
-          {errors.version && <div className="text-terminal-error text-xs">ERROR: {errors.version}</div>}
-        </div>
-
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-tags">
-            LANGUAGES_HASHTAGS:
-          </label>
-          <input
-            type="text"
-            id="edit-project-tags"
-            name="tags"
-            className="form-input terminal-input"
-            value={formData.tags}
-            onChange={handleChange}
-            placeholder="#javascript, #react"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="form-label text-terminal-text text-sm cursor-pointer block" htmlFor="edit-project-image">
-            PROJECT_IMAGE (max {IMAGE_MAX_SIZE_MB}MB):
+        <div className="edit-project__group">
+          <label className="edit-project__label" htmlFor="edit-project-image">
+            Project image (max {IMAGE_MAX_SIZE_MB}MB)
           </label>
           <input
             type="file"
             id="edit-project-image"
             accept="image/*"
-            className="form-input terminal-input"
+            className="edit-project__input edit-project__input--file"
             onChange={handleImageChange}
           />
-          {errors.projectImage && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.projectImage}</div>
-          )}
+          {errors.projectImage && <div className="edit-project__error">{errors.projectImage}</div>}
           {(imagePreview || project.imageUrl) && (
-            <div className="mt-2 border border-terminal-dim rounded bg-terminal-input-bg/50 p-2 inline-flex flex-col gap-2">
-              <span className="text-[11px] text-terminal-dim">Current preview</span>
+            <div className="edit-project__preview">
+              <span className="edit-project__preview-label">Current preview</span>
               <img
                 src={imagePreview || project.imageUrl}
                 alt="Project preview"
-                className="max-h-32 rounded border border-terminal-border object-cover"
+                className="edit-project__preview-image"
               />
             </div>
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+        <div className="edit-project__actions">
           <button
             type="submit"
-            className={`${buttonClass('var(--terminal-accent)')}`}
+            className="terminal-button edit-project__button edit-project__button--primary"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'SAVING...' : 'SAVE_CHANGES'}
+            {isSubmitting ? 'Saving…' : 'Save Changes'}
           </button>
-          <button
+            <button
             type="button"
             onClick={handleCancel}
-            className={`${buttonClass('var(--terminal-text)')}`}
+            className="terminal-button edit-project__button edit-project__button--ghost"
             disabled={isSubmitting}
           >
-            CANCEL
+            Cancel
           </button>
         </div>
       </form>
-    </div>
+    </section>
   );
 };
 

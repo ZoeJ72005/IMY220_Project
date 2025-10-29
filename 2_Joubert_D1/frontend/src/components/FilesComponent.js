@@ -1,4 +1,5 @@
 import React from 'react';
+import './FilesComponent.css';
 
 const formatBytes = (bytes) => {
   if (!bytes && bytes !== 0) return '0 B';
@@ -21,80 +22,92 @@ const FilesComponent = ({ files = [], canEdit, checkoutStatus }) => {
   };
 
   return (
-    <div className="font-fira-code">
-      <div className="flex justify-between items-center mb-4 border-b border-terminal-dim pb-2">
-        <h3 className="text-base font-bold text-terminal-accent">
-          &gt; PROJECT_FILES
-          <span className="cursor animate-blink">_</span>
-        </h3>
+    <section className="project-files">
+      <header className="project-files__header">
+        <div className="project-files__title-group">
+          <h3 className="project-files__title">
+            &gt; Project Files<span className="project-files__cursor">_</span>
+          </h3>
+          <p className="project-files__subtitle">
+            Browse the repository assets that have been checked in.
+          </p>
+        </div>
         {canUploadMore && (
-          <span className="text-[10px] text-terminal-warning uppercase">
-            Checked out by you &mdash; upload new files via the check-in form.
+          <span className="project-files__status">
+            Checked out by you — upload new files via the check-in form.
           </span>
         )}
-      </div>
+      </header>
 
       {files.length === 0 ? (
-        <div className="text-center p-8 border-2 border-dashed border-terminal-dim rounded-lg text-terminal-text">
-          <p>No files in this project yet.</p>
-          <p className="text-xs text-terminal-dim mt-2">
+        <div className="project-files__empty">
+          <p>No files uploaded to this project yet.</p>
+          <p>
             {canUploadMore
-              ? 'Use the check-in form to add files to this project.'
-              : 'Files will appear here once added by project members.'}
+              ? 'Use the check-in form to add starter files or documentation.'
+              : 'Files from your collaborators will appear here as they are checked in.'}
           </p>
         </div>
       ) : (
-        <div className="w-full overflow-x-auto">
-          <div className="min-w-full inline-block">
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 text-terminal-dim text-[10px] uppercase font-bold border-b border-terminal-text pb-2 mb-1">
-              <div>Filename</div>
-              <div>Size</div>
-              <div>Uploaded by</div>
-              <div className="text-right">Actions</div>
+        <div className="project-files__table" role="table" aria-label="Project files">
+          <div className="project-files__table-head" role="rowgroup">
+            <div className="project-files__row project-files__row--head" role="row">
+              <div className="project-files__cell project-files__cell--filename" role="columnheader">
+                Filename
+              </div>
+              <div className="project-files__cell project-files__cell--size" role="columnheader">
+                Size
+              </div>
+              <div className="project-files__cell project-files__cell--uploader" role="columnheader">
+                Uploaded by
+              </div>
+              <div className="project-files__cell project-files__cell--actions" role="columnheader">
+                Actions
+              </div>
             </div>
-
-            <div className="flex flex-col space-y-2">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 items-center text-terminal-text text-xs p-2 bg-terminal-input-bg/50 rounded hover:bg-terminal-input-bg/70 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-terminal-accent">&gt;</span>
-                    <span className="truncate">{file.name}</span>
-                  </div>
-                  <div className="text-[11px] text-terminal-dim">{formatBytes(file.size)}</div>
-                  <div className="text-[11px] text-terminal-dim">
-                    {file.uploadedBy?.username || 'unknown'}
-                    {file.uploadedAt && (
-                      <span className="block text-[10px] text-terminal-dim/80">
-                        {new Date(file.uploadedAt).toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      className="terminal-button text-[10px] px-2 py-1 bg-transparent text-terminal-text border border-terminal-text hover:bg-[rgba(0,255,0,0.1)]"
-                      onClick={() => openInNewTab(file.downloadUrl)}
-                    >
-                      VIEW
-                    </button>
-                    <a
-                      href={file.downloadUrl}
-                      className="terminal-button text-[10px] px-2 py-1 bg-transparent text-terminal-accent border border-terminal-accent hover:bg-[rgba(0,255,0,0.1)]"
-                      download={file.name}
-                    >
-                      DOWNLOAD
-                    </a>
-                  </div>
+          </div>
+          <div className="project-files__table-body" role="rowgroup">
+            {files.map((file) => (
+              <div key={file.id} className="project-files__row" role="row">
+                <div className="project-files__cell project-files__cell--filename" role="cell">
+                  <span className="project-files__filename-indicator">&gt;</span>
+                  <span className="project-files__filename" title={file.name}>
+                    {file.name}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div className="project-files__cell project-files__cell--size" role="cell">
+                  {formatBytes(file.size)}
+                </div>
+                <div className="project-files__cell project-files__cell--uploader" role="cell">
+                  <span>{file.uploadedBy?.username || 'unknown'}</span>
+                  {file.uploadedAt && (
+                    <time className="project-files__timestamp">
+                      {new Date(file.uploadedAt).toLocaleString()}
+                    </time>
+                  )}
+                </div>
+                <div className="project-files__cell project-files__cell--actions" role="cell">
+                  <button
+                    type="button"
+                    className="project-files__button"
+                    onClick={() => openInNewTab(file.downloadUrl)}
+                  >
+                    View
+                  </button>
+                  <a
+                    href={file.downloadUrl}
+                    className="project-files__button project-files__button--accent"
+                    download={file.name}
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

@@ -1,0 +1,114 @@
+.feed-board {
+  display: grid;
+  gap: 1.6rem;
+  font-family: 'Fira Code', monospace;
+  color: var(--terminal-text);
+}
+
+.feed-board__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  height: 13rem;
+  font-size: 0.9rem;
+  color: var(--terminal-text);
+  font-family: 'Fira Code', monospace;
+}
+
+.feed-board__cursor {
+  animation: blink 1s infinite;
+}
+
+.feed-board__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.22);
+}
+
+.feed-board__summary {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.feed-board__title {
+  margin: 0;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--terminal-accent);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.feed-board__subtitle {
+  font-size: 0.75rem;
+  color: var(--terminal-dim);
+  line-height: 1.5;
+}
+
+.feed-board__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.feed-board__count {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.feed-board__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.feed-board__select {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--terminal-text);
+  background: linear-gradient(135deg, rgba(0, 17, 0, 0.75), rgba(0, 32, 0, 0.6));
+  border: 1px solid rgba(0, 255, 0, 0.28);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feed-board__select:focus {
+  outline: none;
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 16px rgba(0, 255, 0, 0.22);
+}
+
+.feed-board__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.2rem;
+}
+
+.feed-board__empty {
+  grid-column: 1 / -1;
+  border: 1px dashed rgba(0, 255, 0, 0.3);
+  border-radius: 16px;
+  padding: 2.2rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.feed-board__empty p:last-child {
+  font-size: 0.72rem;
+  color: var(--terminal-dim);
+}

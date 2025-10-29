@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './DiscussionBoard.css';
 
 const DiscussionBoard = ({
   discussion = [],
@@ -25,56 +26,54 @@ const DiscussionBoard = ({
   };
 
   return (
-    <div className="font-fira-code space-y-4">
-      <div className="flex items-center justify-between border-b border-terminal-dim pb-2">
-        <h3 className="text-base font-bold text-terminal-accent">
-          &gt; DISCUSSION_BOARD
-          <span className="cursor animate-blink">_</span>
-        </h3>
-        {loading && (
-          <span className="text-terminal-dim text-xs">loading...</span>
-        )}
-      </div>
+    <section className="discussion-board">
+      <header className="discussion-board__header">
+        <div>
+          <h3 className="discussion-board__title">
+            &gt; Discussion Board<span className="discussion-board__cursor">_</span>
+          </h3>
+          <p className="discussion-board__subtitle">
+            Coordinate with collaborators and track important project notes.
+          </p>
+        </div>
+        {loading && <span className="discussion-board__loading">Loading…</span>}
+      </header>
 
       {discussion.length === 0 && !loading && (
-        <div className="text-center p-8 border-2 border-dashed border-terminal-dim rounded-lg text-terminal-text">
+        <div className="discussion-board__empty">
           <p>No discussion messages yet.</p>
-          <p className="text-xs text-terminal-dim mt-2">
-            Start the conversation by posting an update.
-          </p>
+          <p>Kick off the conversation by posting an update.</p>
         </div>
       )}
 
       {discussion.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div className="discussion-board__timeline">
           {discussion.map((entry) => (
-            <div
-              key={entry.id}
-              className="p-3 bg-terminal-input-bg/70 border border-terminal-dim rounded-md shadow-inner flex flex-col gap-1 text-xs"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-terminal-accent font-semibold">
+            <article key={entry.id} className="discussion-board__entry">
+              <header className="discussion-board__entry-header">
+                <span className="discussion-board__author">
                   {entry.user?.username || 'unknown'}
                 </span>
                 {entry.createdAt && (
-                  <span className="text-terminal-dim text-[10px]">
+                  <time className="discussion-board__time">
                     {new Date(entry.createdAt).toLocaleString()}
-                  </span>
+                  </time>
                 )}
-              </div>
-              <p className="text-terminal-text leading-relaxed">{entry.message}</p>
-            </div>
+              </header>
+              <p className="discussion-board__message">{entry.message}</p>
+            </article>
           ))}
         </div>
       )}
 
       {canDiscuss && (
-        <form onSubmit={handleSubmit} className="space-y-2 border border-terminal-dim rounded-lg p-3 bg-terminal-input-bg/40">
-          <label className="text-[10px] uppercase text-terminal-dim">
+        <form onSubmit={handleSubmit} className="discussion-board__form">
+          <label className="discussion-board__form-label" htmlFor="discussion-input">
             New message
           </label>
           <textarea
-            className="terminal-input text-sm p-2"
+            id="discussion-input"
+            className="discussion-board__textarea"
             rows="3"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
@@ -84,13 +83,13 @@ const DiscussionBoard = ({
           <button
             type="submit"
             disabled={submitting || !message.trim()}
-            className="terminal-button text-xs px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full sm:w-auto"
+            className="discussion-board__submit"
           >
-            {submitting ? 'POSTING...' : 'POST_MESSAGE'}
+            {submitting ? 'Posting…' : 'Post Message'}
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 };
 

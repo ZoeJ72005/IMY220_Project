@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import './MessagesComponent.css';
 
-const MessagesComponent = ({ messages = [], canAddMessage, projectId, currentUser, onMessageAdded }) => {
+const MessagesComponent = ({
+  messages = [],
+  canAddMessage,
+  projectId,
+  currentUser,
+  onMessageAdded,
+}) => {
   const [messageText, setMessageText] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,64 +51,65 @@ const MessagesComponent = ({ messages = [], canAddMessage, projectId, currentUse
   };
 
   return (
-    <div className="font-fira-code">
-      <h3 className="text-base font-bold text-terminal-accent mb-4 border-b border-terminal-dim pb-2">
-        &gt; PROJECT_ACTIVITY
-        <span className="cursor animate-blink">_</span>
-      </h3>
+    <section className="project-messages">
+      <div className="project-messages__header">
+        <h3 className="project-messages__title">
+          &gt; Project Activity<span className="project-messages__cursor">_</span>
+        </h3>
+        <p className="project-messages__subtitle">
+          Live updates and collaboration notes for this project.
+        </p>
+      </div>
 
-      <div className="messages-list flex flex-col space-y-3">
+      <div className="project-messages__list" role="list">
         {messages.map((message) => (
-          <div key={message.id} className="p-3 bg-terminal-input-bg/70 border border-terminal-dim rounded-md shadow-inner">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <Link to={`/profile/${message.user?.id}`} className="text-terminal-accent font-bold hover:underline">
+          <article key={message.id} className="project-messages__item" role="listitem">
+            <header className="project-messages__item-header">
+              <Link
+                to={`/profile/${message.user?.id}`}
+                className="project-messages__author"
+              >
                 {message.user?.username || 'unknown'}
               </Link>
-              <span className="text-terminal-text">{message.action}</span>
-              <span className="text-terminal-dim text-[10px] ml-auto">{message.time}</span>
-            </div>
-            
+              <span className="project-messages__action">{message.action}</span>
+              <time className="project-messages__time">{message.time}</time>
+            </header>
+
             {message.message && (
-              <div className="text-terminal-text text-sm italic mt-2 border-l-2 border-terminal-accent pl-2">
-                "{message.message}"
-              </div>
+              <p className="project-messages__comment">"{message.message}"</p>
             )}
-          </div>
+          </article>
         ))}
       </div>
 
       {messages.length === 0 && (
-        <div className="text-center p-8 border-2 border-dashed border-terminal-dim rounded-lg text-terminal-text">
-          <p>No activity recorded</p>
-          <p className="text-xs text-terminal-dim mt-2">Project activity will appear here</p>
+        <div className="project-messages__empty">
+          <p>No activity recorded yet.</p>
+          <p>Updates, check-ins, and messages will appear here.</p>
         </div>
       )}
 
       {canAddMessage && (
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col space-y-3 border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/50">
-          <h4 className="text-sm text-terminal-accent">&gt; POST_MESSAGE</h4>
-          {error && (
-            <div className="text-terminal-error text-xs border border-terminal-error bg-terminal-bg/40 p-2">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="project-messages__form">
+          <h4 className="project-messages__form-title">&gt; Post Message</h4>
+          {error && <div className="project-messages__error">{error}</div>}
+          <label className="project-messages__label" htmlFor="project-message">
+            Share a status update with your collaborators
+          </label>
           <textarea
-            className="terminal-input text-sm p-2"
+            id="project-message"
+            className="project-messages__textarea"
             rows="3"
             value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder="Share an update with your collaborators..."
+            onChange={(event) => setMessageText(event.target.value)}
+            placeholder="Write a short summary of what changed…"
           />
-          <button
-            type="submit"
-            className="terminal-button text-xs px-3 py-2 bg-transparent text-terminal-accent border border-terminal-accent self-end"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'POSTING...' : 'POST_MESSAGE'}
+          <button type="submit" className="project-messages__submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Posting…' : 'Post Message'}
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 };
 

@@ -1,0 +1,162 @@
+.discussion-board {
+  display: grid;
+  gap: 1.5rem;
+  font-family: 'Fira Code', monospace;
+  color: var(--terminal-text);
+}
+
+.discussion-board__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.discussion-board__title {
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-accent);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.discussion-board__cursor {
+  animation: blink 1s infinite;
+}
+
+.discussion-board__subtitle {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--terminal-dim);
+  line-height: 1.5;
+}
+
+.discussion-board__loading {
+  font-size: 0.7rem;
+  color: var(--terminal-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.discussion-board__empty {
+  border: 1px dashed rgba(0, 255, 0, 0.3);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
+  font-size: 0.82rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.discussion-board__empty p:last-child {
+  font-size: 0.72rem;
+  color: var(--terminal-dim);
+}
+
+.discussion-board__timeline {
+  display: grid;
+  gap: 1rem;
+}
+
+.discussion-board__entry {
+  border: 1px solid rgba(0, 255, 0, 0.18);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(135deg, rgba(0, 20, 0, 0.75), rgba(0, 32, 0, 0.6));
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.35);
+}
+
+.discussion-board__entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  font-size: 0.78rem;
+  margin-bottom: 0.6rem;
+}
+
+.discussion-board__author {
+  color: var(--terminal-accent);
+  font-weight: 600;
+}
+
+.discussion-board__time {
+  font-size: 0.68rem;
+  color: var(--terminal-dim);
+  margin-left: auto;
+}
+
+.discussion-board__message {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--terminal-text);
+}
+
+.discussion-board__form {
+  border: 1px solid rgba(0, 255, 0, 0.25);
+  border-radius: 12px;
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.75rem;
+  background: rgba(0, 25, 0, 0.55);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.35);
+}
+
+.discussion-board__form-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-dim);
+}
+
+.discussion-board__textarea {
+  width: 100%;
+  min-height: 110px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--terminal-text);
+  background: var(--terminal-input-bg);
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  border-radius: 10px;
+  padding: 0.75rem;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.discussion-board__textarea:focus {
+  outline: none;
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 18px rgba(0, 255, 0, 0.22);
+}
+
+.discussion-board__submit {
+  justify-self: end;
+  padding: 0.6rem 1.6rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-text);
+  background: linear-gradient(135deg, rgba(0, 32, 0, 0.9), rgba(0, 48, 0, 0.65));
+  border: 1px solid rgba(0, 255, 0, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.discussion-board__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 18px rgba(0, 255, 0, 0.25);
+}
+
+.discussion-board__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
