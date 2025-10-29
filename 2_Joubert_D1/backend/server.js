@@ -293,107 +293,78 @@ const buildPreviewList = (ids = [], docMap = new Map()) =>
     });
 
 const fetchUsersByIds = async (ids, select = 'username profileImage') => {
+    if (!Users) return [];
     const objectIds = normalizeObjectIdArray(ids);
+    if (!objectIds.length) return [];
+    const projection = buildProjection(select);
+    const cursor = Users.find({ _id: { $in: objectIds } }, projection ? { projection } : {});
+    return cursor.toArray();
+};
 
 const findUserById = async (id, select) => {
-    if (!Users) {
-        return null;
-    }
+    if (!Users) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     const projection = buildProjection(select);
     return Users.findOne({ _id: objectId }, projection ? { projection } : {});
 };
 
 const updateUserById = async (id, update, options = {}) => {
-    if (!Users) {
-        return null;
-    }
+    if (!Users) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     const returnDocument = options.new ? 'after' : 'before';
     const result = await Users.findOneAndUpdate(
         { _id: objectId },
         update,
-        { returnDocument, upsert: options.upsert || false }
+        { returnDocument, upsert: !!options.upsert }
     );
     return result.value;
 };
 
 const deleteUserById = async (id) => {
-    if (!Users) {
-        return null;
-    }
+    if (!Users) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     const result = await Users.findOneAndDelete({ _id: objectId });
     return result.value;
 };
 
 const findProjectById = async (id) => {
-    if (!Projects) {
-        return null;
-    }
+    if (!Projects) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     return Projects.findOne({ _id: objectId });
 };
 
 const updateProjectById = async (id, update, options = {}) => {
-    if (!Projects) {
-        return null;
-    }
+    if (!Projects) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     const returnDocument = options.new ? 'after' : 'before';
     const result = await Projects.findOneAndUpdate(
         { _id: objectId },
         update,
-        { returnDocument, upsert: options.upsert || false }
+        { returnDocument, upsert: !!options.upsert }
     );
     return result.value;
 };
 
 const deleteProjectById = async (id) => {
-    if (!Projects) {
-        return null;
-    }
+    if (!Projects) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     const result = await Projects.findOneAndDelete({ _id: objectId });
     return result.value;
 };
 
 const findMessageById = async (id) => {
-    if (!Messages) {
-        return null;
-    }
+    if (!Messages) return null;
     const objectId = toObjectId(id);
-    if (!objectId) {
-        return null;
-    }
+    if (!objectId) return null;
     return Messages.findOne({ _id: objectId });
 };
-    if (!objectIds.length || !Users) {
-        return [];
-    }
-    const projection = buildProjection(select);
-    const cursor = Users.find({ _id: { $in: objectIds } }, projection ? { projection } : {});
-    const docs = await cursor.toArray();
-    return docs;
-};
+
 
 const formatActivity = (activity = []) => {
     return activity
@@ -488,17 +459,17 @@ const buildProfilePayload = async (userId) => {
         $or: [{ ownerId: userObjectId }, { members: userObjectId }],
     }).toArray();
 
-    const projectSummaries = projects.map((project) => {
-        const projectOwnerId = project.ownerId ? project.ownerId.toString() : null;
+    const projectSummaries = projects.map((projects) => {
+        const projectOwnerId = projects.ownerId ? projects.ownerId.toString() : null;
         const isOwner = projectOwnerId === (userObjectId ? userObjectId.toString() : null);
 
         return {
-            id: project._id.toString(),
-            name: project.name,
-            description: project.description,
+            id: projects._id.toString(),
+            name: projects.name,
+            description: projects.description,
             role: isOwner ? 'owner' : 'member',
-            lastActivity: project.lastActivity ? new Date(project.lastActivity).toLocaleDateString() : '',
-            imageUrl: buildPublicUrl(project.image),
+            lastActivity: projects.lastActivity ? new Date(projects.lastActivity).toLocaleDateString() : '',
+            imageUrl: buildPublicUrl(projects.image),
         };
     });
 
@@ -518,18 +489,18 @@ const populateProjectDetail = async (projectId) => {
         return null;
     }
 
-    const project = await Projects.findOne({ _id: projectObjectId });
-    if (!project) {
+    const projects = await Projects.findOne({ _id: projectObjectId });
+    if (!projects) {
         return null;
     }
 
-    const ownerId = project.ownerId ? toObjectId(project.ownerId) : null;
-    const checkedOutId = project.checkedOutBy ? toObjectId(project.checkedOutBy) : null;
-    const memberIds = normalizeObjectIdArray(project.members);
+    const ownerId = projects.ownerId ? toObjectId(projects.ownerId) : null;
+    const checkedOutId = projects.checkedOutBy ? toObjectId(projects.checkedOutBy) : null;
+    const memberIds = normalizeObjectIdArray(projects.members);
     const fileUploaderIds = normalizeObjectIdArray(
-        (project.files || []).map((file) => file.uploadedBy)
+        (projects.files || []).map((file) => file.uploadedBy)
     );
-    const activityIds = normalizeObjectIdArray(project.activity);
+    const activityIds = normalizeObjectIdArray(projects.activity);
 
     const [ownerDocs, checkedOutDocs, memberDocs, fileUploaderDocs, activityDocs] = await Promise.all([
         ownerId ? fetchUsersByIds([ownerId]) : Promise.resolve([]),
@@ -550,7 +521,7 @@ const populateProjectDetail = async (projectId) => {
     const activityUserDocs = await fetchUsersByIds(activityUserIds);
     const activityUserMap = docsToMapById(activityUserDocs);
 
-    const enrichedFiles = (project.files || []).map((file) => {
+    const enrichedFiles = (projects.files || []).map((file) => {
         const uploaderId = file.uploadedBy ? toObjectId(file.uploadedBy) : null;
         const uploaderDoc = uploaderId ? fileUploaderMap.get(uploaderId.toString()) : null;
         return {
@@ -568,7 +539,7 @@ const populateProjectDetail = async (projectId) => {
     });
 
     return {
-        ...project,
+        ...projects,
         ownerId: ownerDoc,
         checkedOutBy: checkedOutDoc,
         members: memberIds.map((id) => memberMap.get(id.toString()) || { _id: id }),
@@ -599,33 +570,33 @@ const requireAdmin = async (userId) => {
         throw error;
     }
 
-    const user = await Users.findOne({ _id: userObjectId }, { projection: { role: 1 } });
-    if (!user || user.role !== 'admin') {
+    const users = await Users.findOne({ _id: userObjectId }, { projection: { role: 1 } });
+    if (!users || users.role !== 'admin') {
         const error = new Error('Admin privileges required');
         error.statusCode = 403;
         throw error;
     }
-    return user;
+    return users;
 };
 
 
-const formatProjectDetail = (project) => ({
-    id: project._id.toString(),
-    name: project.name,
-    description: project.description,
-    type: project.type,
-    version: project.version,
-    tags: project.tags,
-    owner: mapUserPreview(project.ownerId),
-    createdDate: project.createdDate ? new Date(project.createdDate).toISOString() : null,
-    lastActivity: project.lastActivity ? new Date(project.lastActivity).toISOString() : null,
-    downloads: project.downloads || 0,
-    checkoutStatus: project.checkoutStatus,
-    checkedOutBy: project.checkedOutBy ? mapUserPreview(project.checkedOutBy) : null,
-    members: (project.members || []).map(mapUserPreview),
-    imageUrl: buildPublicUrl(project.image),
-    files: (project.files || []).map((fileDoc) => buildFilePayload(project._id, fileDoc)),
-    activity: formatActivity(project.activity),
+const formatProjectDetail = (projects) => ({
+    id: projects._id.toString(),
+    name: projects.name,
+    description: projects.description,
+    type: projects.type,
+    version: projects.version,
+    tags: projects.tags,
+    owner: mapUserPreview(projects.ownerId),
+    createdDate: projects.createdDate ? new Date(projects.createdDate).toISOString() : null,
+    lastActivity: projects.lastActivity ? new Date(projects.lastActivity).toISOString() : null,
+    downloads: projects.downloads || 0,
+    checkoutStatus: projects.checkoutStatus,
+    checkedOutBy: projects.checkedOutBy ? mapUserPreview(projects.checkedOutBy) : null,
+    members: (projects.members || []).map(mapUserPreview),
+    imageUrl: buildPublicUrl(projects.image),
+    files: (projects.files || []).map((fileDoc) => buildFilePayload(projects._id, fileDoc)),
+    activity: formatActivity(projects.activity),
 });
 
 const formatDiscussionMessage = (message) => ({
@@ -678,13 +649,13 @@ app.post('/api/auth/signin', async (req, res) => {
 
     try {
         const normalisedEmail = email.trim().toLowerCase();
-        const user = await Users.findOne({ email: normalisedEmail });
+        const users = await Users.findOne({ email: normalisedEmail });
 
-        if (!user || user.password !== password) {
+        if (!users || users.password !== password) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        const payload = await buildAuthUserPayload(user._id);
+        const payload = await buildAuthUserPayload(users._id);
         if (!payload) {
             return res.status(500).json({ success: false, message: 'Unable to build user payload' });
         }
@@ -1032,20 +1003,17 @@ app.post('/api/admin/project-types', async (req, res) => {
     if (!adminId || !name) {
         return res.status(400).json({ success: false, message: 'Admin identifier and type name are required' });
     }
-
     try {
         await requireAdmin(adminId);
         const normalisedName = name.trim().toLowerCase();
         if (!normalisedName) {
             return res.status(400).json({ success: false, message: 'Type name cannot be empty' });
         }
-
-        const existing = await ProjectType.findOne({ name: normalisedName }).lean();
+        const existing = await ProjectTypes.findOne({ name: normalisedName });
         if (existing) {
             return res.status(409).json({ success: false, message: 'Project type already exists' });
         }
-
-        await ProjectType.create({ name: normalisedName });
+        await ProjectTypes.insertOne({ name: normalisedName, createdAt: new Date() });
         const types = await getProjectTypes();
         res.status(201).json({ success: true, types });
     } catch (error) {
@@ -1055,17 +1023,17 @@ app.post('/api/admin/project-types', async (req, res) => {
     }
 });
 
+
 app.delete('/api/admin/project-types/:name', async (req, res) => {
     const { adminId } = req.body;
     const name = req.params.name;
     if (!adminId || !name) {
         return res.status(400).json({ success: false, message: 'Admin identifier and type name are required' });
     }
-
     try {
         await requireAdmin(adminId);
         const normalisedName = decodeURIComponent(name).toLowerCase();
-        await ProjectType.findOneAndDelete({ name: normalisedName });
+        await ProjectTypes.findOneAndDelete({ name: normalisedName });
         const types = await getProjectTypes();
         res.json({ success: true, types });
     } catch (error) {
@@ -1074,6 +1042,7 @@ app.delete('/api/admin/project-types/:name', async (req, res) => {
         res.status(status).json({ success: false, message: error.message || 'Server error deleting project type' });
     }
 });
+
 
 app.get('/api/admin/dashboard', async (req, res) => {
     const { adminId } = req.query;
@@ -1116,13 +1085,13 @@ app.get('/api/admin/users', async (req, res) => {
         await requireAdmin(adminId);
         const users = await Users.find({}).toArray();
 
-        const payload = users.map((user) => ({
-            id: user._id.toString(),
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            friends: user.friends?.length || 0,
-            projects: user.projects?.length || 0,
+        const payload = users.map((users) => ({
+            id: users._id.toString(),
+            username: users.username,
+            email: users.email,
+            role: users.role,
+            friends: users.friends?.length || 0,
+            projects: users.projects?.length || 0,
         }));
 
         res.json({ success: true, users: payload });
@@ -1143,18 +1112,18 @@ app.get('/api/admin/projects', async (req, res) => {
         await requireAdmin(adminId);
         const projects = await Projects.find({}).toArray();
 
-        const ownerIds = normalizeObjectIdArray(projects.map((project) => project.ownerId));
+        const ownerIds = normalizeObjectIdArray(projects.map((projects) => projects.ownerId));
         const ownerDocs = await fetchUsersByIds(ownerIds, 'username');
         const ownerMap = docsToMapById(ownerDocs);
 
-        const payload = projects.map((project) => ({
-            id: project._id.toString(),
-            name: project.name,
-            owner: project.ownerId ? (ownerMap.get(project.ownerId.toString())?.username || 'unknown') : 'unknown',
-            type: project.type,
-            members: project.members?.length || 0,
-            downloads: project.downloads || 0,
-            lastActivity: project.lastActivity ? new Date(project.lastActivity).toISOString() : null,
+        const payload = projects.map((projects) => ({
+            id: projects._id.toString(),
+            name: projects.name,
+            owner: projects.ownerId ? (ownerMap.get(projects.ownerId.toString())?.username || 'unknown') : 'unknown',
+            type: projects.type,
+            members: projects.members?.length || 0,
+            downloads: projects.downloads || 0,
+            lastActivity: projects.lastActivity ? new Date(projects.lastActivity).toISOString() : null,
         }));
 
         res.json({ success: true, projects: payload });
@@ -1176,7 +1145,6 @@ const sanitizeProjectDescription = (value) => (value || '').trim();
 // GET Projects Feed (Local/Global)
 app.get('/api/projects/feed', async (req, res) => {
     const { feedType = 'global', sortBy = 'date', userId } = req.query;
-
     try {
         const sortQuery = sortBy === 'popularity'
             ? { downloads: -1, lastActivity: -1 }
@@ -1189,15 +1157,12 @@ app.get('/api/projects/feed', async (req, res) => {
             if (!viewerId) {
                 return res.status(400).json({ success: false, message: 'Invalid user identifier for feed' });
             }
-
-            const viewer = await User.findById(viewerId).lean();
+            const viewer = await findUserById(viewerId);
             if (!viewer) {
                 return res.status(404).json({ success: false, message: 'User not found' });
             }
-
-            const friendIds = (viewer.friends || []).map((id) => toObjectId(id)).filter(Boolean);
+            const friendIds = normalizeObjectIdArray(viewer.friends);
             const ownersToInclude = [viewerId, ...friendIds];
-
             matchQuery = {
                 $or: [
                     { ownerId: { $in: ownersToInclude } },
@@ -1206,33 +1171,50 @@ app.get('/api/projects/feed', async (req, res) => {
             };
         }
 
-        const projects = await Project.find(matchQuery)
-            .populate('ownerId', 'username profileImage')
-            .populate('checkedOutBy', 'username profileImage')
-            .populate({
-                path: 'activity',
-                options: { sort: { time: -1 }, limit: 3 },
-                populate: { path: 'userId', select: 'username profileImage' },
-            })
-            .sort(sortQuery)
-            .lean();
+        const projects = await Projects.find(matchQuery).sort(sortQuery).toArray();
 
-        const formattedProjects = projects.map((project) => ({
-            id: project._id.toString(),
-            name: project.name,
-            description: project.description,
-            type: project.type,
-            version: project.version,
-            tags: project.tags,
-            owner: mapUserPreview(project.ownerId),
-            imageUrl: buildPublicUrl(project.image),
-            checkoutStatus: project.checkoutStatus,
-            checkedOutBy: project.checkedOutBy ? mapUserPreview(project.checkedOutBy) : null,
-            members: Array.isArray(project.members) ? project.members.length : 0,
-            downloads: project.downloads || 0,
-            lastActivity: project.lastActivity ? new Date(project.lastActivity).toLocaleDateString() : '',
-            activity: formatActivity(project.activity),
-        }));
+        // hydrate owner/checkedOutBy + last 3 activity messages
+        const ownerIds = normalizeObjectIdArray(projects.map(p => p.ownerId));
+        const checkoutIds = normalizeObjectIdArray(projects.map(p => p.checkedOutBy).filter(Boolean));
+        const activityIds = normalizeObjectIdArray(
+            projects.flatMap(p => (p.activity || []).slice(-3)) // last 3
+        );
+
+        const [ownerDocs, checkoutDocs, activityDocs] = await Promise.all([
+            fetchUsersByIds(ownerIds, 'username profileImage'),
+            fetchUsersByIds(checkoutIds, 'username profileImage'),
+            activityIds.length
+                ? Messages.find({ _id: { $in: activityIds } }).toArray()
+                : Promise.resolve([]),
+        ]);
+
+        const ownerMap = docsToMapById(ownerDocs);
+        const checkoutMap = docsToMapById(checkoutDocs);
+        const activityMap = docsToMapById(activityDocs);
+
+        const formattedProjects = projects.map((project) => {
+            const actIds = (project.activity || []).slice(-3);
+            const actDocs = actIds.map(id => activityMap.get(id.toString())).filter(Boolean);
+
+            return {
+                id: project._id.toString(),
+                name: project.name,
+                description: project.description,
+                type: project.type,
+                version: project.version,
+                tags: project.tags,
+                owner: mapUserPreview(ownerMap.get(project.ownerId?.toString()) || project.ownerId),
+                imageUrl: buildPublicUrl(project.image),
+                checkoutStatus: project.checkoutStatus,
+                checkedOutBy: project.checkedOutBy
+                    ? mapUserPreview(checkoutMap.get(project.checkedOutBy.toString()) || project.checkedOutBy)
+                    : null,
+                members: Array.isArray(project.members) ? project.members.length : 0,
+                downloads: project.downloads || 0,
+                lastActivity: project.lastActivity ? new Date(project.lastActivity).toLocaleDateString() : '',
+                activity: formatActivity(actDocs),
+            };
+        });
 
         res.json({ success: true, projects: formattedProjects });
     } catch (error) {
@@ -1240,6 +1222,7 @@ app.get('/api/projects/feed', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
 
 // GET Project by ID (View Project)
 app.get('/api/projects/:id', async (req, res) => {
@@ -1249,13 +1232,13 @@ app.get('/api/projects/:id', async (req, res) => {
     }
 
     try {
-        const project = await populateProjectDetail(projectId);
+        const projects = await populateProjectDetail(projectId);
 
-        if (!project) {
+        if (!projects) {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
-        res.json({ success: true, project: formatProjectDetail(project) });
+        res.json({ success: true, project: formatProjectDetail(projects) });
     } catch (error) {
         console.error('Project fetch error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -1303,107 +1286,103 @@ app.post(
             return res.status(400).json({ success: false, message: 'Project version is required' });
         }
 
-        try {
-            const availableTypes = await getProjectTypes();
-            if (!availableTypes.includes(type)) {
-                cleanupUploadedFiles(uploadedGroups);
-                return res.status(400).json({ success: false, message: 'Project type is invalid' });
-            }
+ // inside the existing route you already have:
+try {
+    const availableTypes = await getProjectTypes();
+    if (!availableTypes.includes(type)) {
+        cleanupUploadedFiles(uploadedGroups);
+        return res.status(400).json({ success: false, message: 'Project type is invalid' });
+    }
 
-            const owner = await User.findById(ownerObjectId).lean();
-            if (!owner) {
-                cleanupUploadedFiles(uploadedGroups);
-                return res.status(404).json({ success: false, message: 'Owner not found' });
-            }
+    const owner = await findUserById(ownerObjectId);
+    if (!owner) {
+        cleanupUploadedFiles(uploadedGroups);
+        return res.status(404).json({ success: false, message: 'Owner not found' });
+    }
 
-            const imageFile = uploadedGroups.projectImage[0];
-            if (imageFile && imageFile.size > IMAGE_MAX_SIZE_BYTES) {
-                cleanupUploadedFiles({ projectImage: [imageFile] });
-                return res.status(400).json({
-                    success: false,
-                    message: 'Project image must be smaller than 5MB. Please upload a smaller image.',
-                });
-            }
+    const imageFile = uploadedGroups.projectImage[0];
+    if (imageFile && imageFile.size > IMAGE_MAX_SIZE_BYTES) {
+        cleanupUploadedFiles({ projectImage: [imageFile] });
+        return res.status(400).json({
+            success: false,
+            message: 'Project image must be smaller than 5MB. Please upload a smaller image.',
+        });
+    }
 
-            const fileRecords = uploadedGroups.projectFiles.map((file) =>
-                createFileRecord(file, req.projectUploadId, ownerObjectId)
-            );
+    const fileRecords = uploadedGroups.projectFiles.map((file) =>
+        createFileRecord(file, req.projectUploadId, ownerObjectId)
+    );
 
-            const newProject = new Project({
-                _id: req.projectUploadId,
-                name,
-                description,
-                ownerId: ownerObjectId,
-                tags,
-                type,
-                version,
-                createdDate: Date.now(),
-                lastActivity: Date.now(),
-                members: [ownerObjectId],
-                image: imageFile ? getRelativePath(imageFile.path) : '',
-                files: fileRecords,
-            });
+    const projectDoc = {
+        _id: req.projectUploadId,
+        name,
+        description,
+        ownerId: ownerObjectId,
+        tags,
+        type,
+        version,
+        createdDate: Date.now(),
+        lastActivity: Date.now(),
+        members: [ownerObjectId],
+        image: imageFile ? getRelativePath(imageFile.path) : '',
+        files: fileRecords,
+        downloads: 0,
+        checkoutStatus: 'checked-in',
+        checkedOutBy: null,
+        activity: [],
+    };
 
-            await newProject.save();
-            await User.findByIdAndUpdate(ownerObjectId, { $addToSet: { projects: newProject._id } });
+    await Projects.insertOne(projectDoc);
+    await Users.updateOne({ _id: ownerObjectId }, { $addToSet: { projects: projectDoc._id } });
 
-            const creationMessage = new Message({
-                projectId: newProject._id,
-                userId: ownerObjectId,
-                action: 'created',
-                message: fileRecords.length
-                    ? 'Project created with initial files'
-                    : 'Project created',
-            });
-            await creationMessage.save();
-            await Project.findByIdAndUpdate(newProject._id, {
-                $push: { activity: creationMessage._id },
-                $set: { lastActivity: Date.now() },
-            });
+    const creationMsg = {
+        projectId: projectDoc._id,
+        userId: ownerObjectId,
+        action: 'created',
+        message: fileRecords.length ? 'Project created with initial files' : 'Project created',
+        time: new Date(),
+    };
+    const { insertedId: msgId } = await Messages.insertOne(creationMsg);
+    await Projects.updateOne(
+        { _id: projectDoc._id },
+        { $push: { activity: msgId }, $set: { lastActivity: Date.now() } }
+    );
 
-            const populatedProject = await populateProjectDetail(newProject._id);
+    const populatedProject = await populateProjectDetail(projectDoc._id);
+    res.status(201).json({
+        success: true,
+        project: formatProjectDetail(populatedProject),
+        message: 'Project created successfully',
+    });
+} catch (error) {
+    cleanupUploadedFiles(uploadedGroups);
+    console.error('Project creation error:', error);
+    res.status(500).json({ success: false, message: 'Server error creating project' });
+}
 
-            res.status(201).json({
-                success: true,
-                project: formatProjectDetail(populatedProject),
-                message: 'Project created successfully',
-            });
-        } catch (error) {
-            cleanupUploadedFiles(uploadedGroups);
-            console.error('Project creation error:', error);
-            res.status(500).json({ success: false, message: 'Server error creating project' });
-        }
     }
 );
 
 // PUT Project (Edit Project Details)
 app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, res) => {
     const projectId = toObjectId(req.params.id);
-    if (!projectId) {
-        return res.status(400).json({ success: false, message: 'Invalid project identifier' });
-    }
+    if (!projectId) return res.status(400).json({ success: false, message: 'Invalid project identifier' });
 
     try {
         const requesterId = toObjectId(req.body.requesterId);
         if (!requesterId) {
-            if (req.file?.path) {
-                fs.unlinkSync(req.file.path);
-            }
+            if (req.file?.path) fs.unlinkSync(req.file.path);
             return res.status(400).json({ success: false, message: 'Requester identifier is required' });
         }
 
-        const project = await Project.findById(projectId).lean();
+        const project = await Projects.findOne({ _id: projectId });
         if (!project) {
-            if (req.file?.path) {
-                fs.unlinkSync(req.file.path);
-            }
+            if (req.file?.path) fs.unlinkSync(req.file.path);
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
         if (project.ownerId.toString() !== requesterId.toString()) {
-            if (req.file?.path) {
-                fs.unlinkSync(req.file.path);
-            }
+            if (req.file?.path) fs.unlinkSync(req.file.path);
             return res.status(403).json({ success: false, message: 'Only the project owner can update details' });
         }
 
@@ -1414,28 +1393,18 @@ app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, r
         const maybeVersion = (req.body.version || '').trim();
         const maybeTags = normalizeTags(req.body.tags);
 
-        if (maybeName) {
-            updateSet.name = maybeName;
-        }
-        if (maybeDescription) {
-            updateSet.description = maybeDescription;
-        }
+        if (maybeName) updateSet.name = maybeName;
+        if (maybeDescription) updateSet.description = maybeDescription;
         if (maybeType) {
             const availableTypes = await getProjectTypes();
             if (!availableTypes.includes(maybeType)) {
-                if (req.file?.path) {
-                    fs.unlinkSync(req.file.path);
-                }
+                if (req.file?.path) fs.unlinkSync(req.file.path);
                 return res.status(400).json({ success: false, message: 'Project type is invalid' });
             }
             updateSet.type = maybeType;
         }
-        if (maybeVersion) {
-            updateSet.version = maybeVersion;
-        }
-        if (req.body.tags !== undefined) {
-            updateSet.tags = maybeTags;
-        }
+        if (maybeVersion) updateSet.version = maybeVersion;
+        if (req.body.tags !== undefined) updateSet.tags = maybeTags;
 
         if (req.file) {
             if (req.file.size > IMAGE_MAX_SIZE_BYTES) {
@@ -1445,20 +1414,13 @@ app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, r
                     message: 'Project image must be smaller than 5MB. Please upload a smaller image.',
                 });
             }
-            if (project.image) {
-                removeFileIfExists(project.image);
-            }
+            if (project.image) removeFileIfExists(project.image);
             updateSet.image = getRelativePath(req.file.path);
         }
 
-        await Project.findByIdAndUpdate(
-            projectId,
-            { $set: updateSet },
-            { runValidators: true },
-        );
+        await Projects.updateOne({ _id: projectId }, { $set: updateSet });
 
         const updatedProject = await populateProjectDetail(projectId);
-
         res.json({ success: true, project: formatProjectDetail(updatedProject) });
     } catch (error) {
         console.error('Project update error:', error);
@@ -1466,46 +1428,40 @@ app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, r
     }
 });
 
+
 // DELETE Project (Delete Project)
 app.delete('/api/projects/:id', async (req, res) => {
     const projectId = toObjectId(req.params.id);
-    if (!projectId) {
-        return res.status(400).json({ success: false, message: 'Invalid project identifier' });
-    }
+    if (!projectId) return res.status(400).json({ success: false, message: 'Invalid project identifier' });
 
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
         await Promise.all([
-            Message.deleteMany({ projectId }),
-            DiscussionMessage.deleteMany({ projectId }),
+            Messages.deleteMany({ projectId }),
+            DiscussionMessages.deleteMany({ projectId }),
         ]);
 
-        const memberIdSet = new Set((project.members || []).map((id) => id.toString()));
-        if (project.ownerId) {
-            memberIdSet.add(project.ownerId.toString());
-        }
-        const memberIds = Array.from(memberIdSet)
-            .map((id) => toObjectId(id))
-            .filter((id) => id);
+        const memberIdSet = new Set((project.members || []).map(id => id.toString()));
+        if (project.ownerId) memberIdSet.add(project.ownerId.toString());
+
+        const memberIds = Array.from(memberIdSet).map(toObjectId).filter(Boolean);
         if (memberIds.length > 0) {
-            await User.updateMany(
+            await Users.updateMany(
                 { _id: { $in: memberIds } },
-                { $pull: { projects: projectId } },
+                { $pull: { projects: projectId } }
             );
         }
 
-        await Project.findByIdAndDelete(projectId);
+        await Projects.deleteOne({ _id: projectId });
 
         const projectDirectory = path.join(PROJECT_UPLOADS_ROOT, projectId.toString());
         if (fs.existsSync(projectDirectory)) {
             try {
                 fs.rmSync(projectDirectory, { recursive: true, force: true });
-            } catch (error) {
-                console.warn('Unable to remove project directory:', projectDirectory, error.message);
+            } catch (err) {
+                console.warn('Unable to remove project directory:', projectDirectory, err.message);
             }
         }
 
@@ -1516,6 +1472,7 @@ app.delete('/api/projects/:id', async (req, res) => {
     }
 });
 
+
 // ==============================
 // PROJECT COLLABORATION ROUTES
 // ==============================
@@ -1525,58 +1482,40 @@ app.post('/api/projects/:id/checkout', async (req, res) => {
     const { userId } = req.body;
     const projectId = toObjectId(req.params.id);
     const userObjectId = toObjectId(userId);
-
     if (!projectId || !userObjectId) {
         return res.status(400).json({ success: false, message: 'Invalid identifiers for checkout' });
     }
-
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const isMember = (project.members || []).some(
-            (memberId) => memberId.toString() === userObjectId.toString(),
-        );
-        if (!isMember) {
-            return res.status(403).json({ success: false, message: 'Only project members can check out the project' });
-        }
+        const isMember = (project.members || []).some(m => m.toString() === userObjectId.toString());
+        if (!isMember) return res.status(403).json({ success: false, message: 'Only project members can check out the project' });
 
-        if (
-            project.checkoutStatus === 'checked-out' &&
+        if (project.checkoutStatus === 'checked-out' &&
             project.checkedOutBy &&
             project.checkedOutBy.toString() !== userObjectId.toString()
         ) {
             return res.status(400).json({ success: false, message: 'Project already checked out by another user' });
         }
 
-        await Project.findByIdAndUpdate(
-            projectId,
-            { checkoutStatus: 'checked-out', checkedOutBy: userObjectId, lastActivity: Date.now() },
+        await Projects.updateOne(
+            { _id: projectId },
+            { $set: { checkoutStatus: 'checked-out', checkedOutBy: userObjectId, lastActivity: Date.now() } }
         );
 
-        const activityMessage = new Message({
-            projectId,
-            userId: userObjectId,
-            action: 'checked-out',
-            message: 'Checked out project for changes',
-        });
-        await activityMessage.save();
-        await Project.findByIdAndUpdate(projectId, { $push: { activity: activityMessage._id } });
+        const msg = { projectId, userId: userObjectId, action: 'checked-out', message: 'Checked out project for changes', time: new Date() };
+        const { insertedId } = await Messages.insertOne(msg);
+        await Projects.updateOne({ _id: projectId }, { $push: { activity: insertedId } });
 
         const populatedProject = await populateProjectDetail(projectId);
-
-        res.json({
-            success: true,
-            project: formatProjectDetail(populatedProject),
-            message: 'Project checked out successfully',
-        });
+        res.json({ success: true, project: formatProjectDetail(populatedProject), message: 'Project checked out successfully' });
     } catch (error) {
         console.error('Check-out error:', error);
         res.status(500).json({ success: false, message: 'Server error during check-out' });
     }
 });
+
 
 // POST Check-in Project
 app.post(
@@ -1607,65 +1546,39 @@ app.post(
             return res.status(400).json({ success: false, message: 'Please provide the updated project version for the check-in' });
         }
 
-        try {
-            const project = await Project.findById(projectId).lean();
-            if (!project) {
-                cleanupUploadedFiles(uploadedGroups);
-                return res.status(404).json({ success: false, message: 'Project not found' });
-            }
+        // keep your route signature; replace body
+try {
+    const project = await Projects.findOne({ _id: projectId });
+    if (!project) { cleanupUploadedFiles(uploadedGroups); return res.status(404).json({ success: false, message: 'Project not found' }); }
+    if (project.checkoutStatus !== 'checked-out') { cleanupUploadedFiles(uploadedGroups); return res.status(400).json({ success: false, message: 'Project is not currently checked out' }); }
+    if (!project.checkedOutBy || project.checkedOutBy.toString() !== userObjectId.toString()) {
+        cleanupUploadedFiles(uploadedGroups); return res.status(403).json({ success: false, message: 'Only the member who checked out the project can check it back in' });
+    }
 
-            if (project.checkoutStatus !== 'checked-out') {
-                cleanupUploadedFiles(uploadedGroups);
-                return res.status(400).json({ success: false, message: 'Project is not currently checked out' });
-            }
+    const newFileRecords = uploadedGroups.projectFiles.map((file) =>
+        createFileRecord(file, projectId, userObjectId)
+    );
 
-            if (!project.checkedOutBy || project.checkedOutBy.toString() !== userObjectId.toString()) {
-                cleanupUploadedFiles(uploadedGroups);
-                return res.status(403).json({ success: false, message: 'Only the member who checked out the project can check it back in' });
-            }
+    const { insertedId: actId } = await Messages.insertOne({
+        projectId, userId: userObjectId, action: 'checked-in', message, time: new Date()
+    });
 
-            const newFileRecords = uploadedGroups.projectFiles.map((file) =>
-                createFileRecord(file, projectId, userObjectId)
-            );
+    const updateOps = {
+        $set: { checkoutStatus: 'checked-in', checkedOutBy: null, lastActivity: Date.now(), version },
+        $push: { activity: actId }
+    };
+    if (newFileRecords.length) updateOps.$push.files = { $each: newFileRecords };
 
-            const activityMessage = new Message({
-                projectId,
-                userId: userObjectId,
-                action: 'checked-in',
-                message,
-            });
-            await activityMessage.save();
+    await Projects.updateOne({ _id: projectId }, updateOps);
 
-            const updateOps = {
-                $set: {
-                    checkoutStatus: 'checked-in',
-                    checkedOutBy: null,
-                    lastActivity: Date.now(),
-                    version,
-                },
-                $push: {
-                    activity: activityMessage._id,
-                },
-            };
+    const populatedProject = await populateProjectDetail(projectId);
+    res.json({ success: true, project: formatProjectDetail(populatedProject), message: 'Project checked in successfully' });
+} catch (error) {
+    cleanupUploadedFiles(uploadedGroups);
+    console.error('Check-in error:', error);
+    res.status(500).json({ success: false, message: 'Server error during check-in' });
+}
 
-            if (newFileRecords.length) {
-                updateOps.$push.files = { $each: newFileRecords };
-            }
-
-            await Project.findByIdAndUpdate(projectId, updateOps);
-
-            const populatedProject = await populateProjectDetail(projectId);
-
-            res.json({
-                success: true,
-                project: formatProjectDetail(populatedProject),
-                message: 'Project checked in successfully',
-            });
-        } catch (error) {
-            cleanupUploadedFiles(uploadedGroups);
-            console.error('Check-in error:', error);
-            res.status(500).json({ success: false, message: 'Server error during check-in' });
-        }
     }
 );
 
@@ -1673,96 +1586,59 @@ app.post('/api/projects/:id/download', async (req, res) => {
     const projectId = toObjectId(req.params.id);
     const userObjectId = req.body.userId ? toObjectId(req.body.userId) : null;
 
-    if (!projectId) {
-        return res.status(400).json({ success: false, message: 'Invalid project identifier for download' });
-    }
+    if (!projectId) return res.status(400).json({ success: false, message: 'Invalid project identifier for download' });
 
     try {
-        const projectExists = await Project.findById(projectId).lean();
-        if (!projectExists) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const projectExists = await Projects.findOne({ _id: projectId });
+        if (!projectExists) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        await Project.findByIdAndUpdate(
-            projectId,
-            { $inc: { downloads: 1 }, lastActivity: Date.now() },
-        );
+        await Projects.updateOne({ _id: projectId }, { $inc: { downloads: 1 }, $set: { lastActivity: Date.now() } });
 
         if (userObjectId) {
-            const downloadMessage = new Message({
-                projectId,
-                userId: userObjectId,
-                action: 'downloaded',
-                message: 'Downloaded project files',
+            const { insertedId } = await Messages.insertOne({
+                projectId, userId: userObjectId, action: 'downloaded', message: 'Downloaded project files', time: new Date()
             });
-            await downloadMessage.save();
-            await Project.findByIdAndUpdate(projectId, { $push: { activity: downloadMessage._id } });
+            await Projects.updateOne({ _id: projectId }, { $push: { activity: insertedId } });
         }
 
         const populatedProject = await populateProjectDetail(projectId);
-
-        res.json({
-            success: true,
-            project: formatProjectDetail(populatedProject),
-            message: 'Download recorded successfully',
-        });
+        res.json({ success: true, project: formatProjectDetail(populatedProject), message: 'Download recorded successfully' });
     } catch (error) {
         console.error('Download error:', error);
         res.status(500).json({ success: false, message: 'Server error during download' });
     }
 });
 
+
 app.post('/api/projects/:id/messages', async (req, res) => {
     const { userId, message } = req.body;
     const projectId = toObjectId(req.params.id);
     const userObjectId = toObjectId(userId);
 
-    if (!projectId || !userObjectId) {
-        return res.status(400).json({ success: false, message: 'Invalid identifiers for message creation' });
-    }
-
-    if (!message || !message.trim()) {
-        return res.status(400).json({ success: false, message: 'Message content is required' });
-    }
+    if (!projectId || !userObjectId) return res.status(400).json({ success: false, message: 'Invalid identifiers for message creation' });
+    if (!message || !message.trim()) return res.status(400).json({ success: false, message: 'Message content is required' });
 
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const isMember = (project.members || []).some(
-            (memberId) => memberId.toString() === userObjectId.toString(),
-        );
-        if (!isMember) {
-            return res.status(403).json({ success: false, message: 'Only project members can post messages' });
-        }
+        const isMember = (project.members || []).some(m => m.toString() === userObjectId.toString());
+        if (!isMember) return res.status(403).json({ success: false, message: 'Only project members can post messages' });
 
-        const newMessage = new Message({
-            projectId,
-            userId: userObjectId,
-            action: 'commented',
-            message: message.trim(),
-        });
-        await newMessage.save();
+        const doc = { projectId, userId: userObjectId, action: 'commented', message: message.trim(), time: new Date() };
+        const { insertedId } = await Messages.insertOne(doc);
 
-        await Project.findByIdAndUpdate(
-            projectId,
-            { $push: { activity: newMessage._id }, lastActivity: Date.now() },
-        );
+        await Projects.updateOne({ _id: projectId }, { $push: { activity: insertedId }, $set: { lastActivity: Date.now() } });
 
-        const populatedMessage = await Message.findById(newMessage._id)
-            .populate('userId', 'username profileImage')
-            .lean();
-
+        const user = await findUserById(userObjectId, 'username profileImage');
         res.status(201).json({
             success: true,
             activity: {
-                id: populatedMessage._id.toString(),
-                user: mapUserPreview(populatedMessage.userId),
-                action: populatedMessage.action,
-                message: populatedMessage.message,
-                time: populatedMessage.time ? new Date(populatedMessage.time).toLocaleString() : '',
+                id: insertedId.toString(),
+                user: mapUserPreview(user || userObjectId),
+                action: doc.action,
+                message: doc.message,
+                time: doc.time.toLocaleString(),
             },
         });
     } catch (error) {
@@ -1771,72 +1647,41 @@ app.post('/api/projects/:id/messages', async (req, res) => {
     }
 });
 
-app.get('/api/projects/:id/discussion', async (req, res) => {
-    const projectId = toObjectId(req.params.id);
-    if (!projectId) {
-        return res.status(400).json({ success: false, message: 'Invalid project identifier for discussion' });
-    }
-
-    try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
-
-        const discussion = await getDiscussionMessages(projectId);
-        res.json({ success: true, discussion });
-    } catch (error) {
-        console.error('Discussion fetch error:', error);
-        res.status(500).json({ success: false, message: 'Server error loading discussion' });
-    }
-});
 
 app.post('/api/projects/:id/discussion', async (req, res) => {
     const projectId = toObjectId(req.params.id);
     const userObjectId = toObjectId(req.body.userId);
     const message = (req.body.message || '').trim();
 
-    if (!projectId || !userObjectId) {
-        return res.status(400).json({ success: false, message: 'Invalid identifiers for discussion message' });
-    }
-
-    if (!message) {
-        return res.status(400).json({ success: false, message: 'Message content is required' });
-    }
+    if (!projectId || !userObjectId) return res.status(400).json({ success: false, message: 'Invalid identifiers for discussion message' });
+    if (!message) return res.status(400).json({ success: false, message: 'Message content is required' });
 
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const isMember = (project.members || []).some(
-            (memberId) => memberId.toString() === userObjectId.toString()
-        );
-        if (!isMember) {
-            return res.status(403).json({ success: false, message: 'Only project members can post to the discussion board' });
-        }
+        const isMember = (project.members || []).some(m => m.toString() === userObjectId.toString());
+        if (!isMember) return res.status(403).json({ success: false, message: 'Only project members can post to the discussion board' });
 
-        const discussionMessage = new DiscussionMessage({
-            projectId,
-            userId: userObjectId,
-            message,
-        });
-        await discussionMessage.save();
+        const doc = { projectId, userId: userObjectId, message, createdAt: new Date() };
+        const { insertedId } = await DiscussionMessages.insertOne(doc);
 
-        const populatedMessage = await DiscussionMessage.findById(discussionMessage._id)
-            .populate('userId', 'username profileImage')
-            .lean();
-
+        const user = await findUserById(userObjectId, 'username profileImage');
         res.status(201).json({
             success: true,
-            message: formatDiscussionMessage(populatedMessage),
+            message: {
+                id: insertedId.toString(),
+                user: mapUserPreview(user || userObjectId),
+                message,
+                createdAt: doc.createdAt.toISOString(),
+            },
         });
     } catch (error) {
         console.error('Discussion post error:', error);
         res.status(500).json({ success: false, message: 'Server error posting to discussion' });
     }
 });
+
 
 app.post('/api/projects/:id/members', async (req, res) => {
     const projectId = toObjectId(req.params.id);
@@ -1849,17 +1694,13 @@ app.post('/api/projects/:id/members', async (req, res) => {
 
     try {
         const [project, requester, friend] = await Promise.all([
-            Project.findById(projectId).lean(),
-            User.findById(requesterId).lean(),
-            User.findById(friendId).lean(),
+            Projects.findOne({ _id: projectId }),
+            Users.findOne({ _id: requesterId }),
+            Users.findOne({ _id: friendId }),
         ]);
 
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
-        if (!requester || !friend) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        if (!requester || !friend) return res.status(404).json({ success: false, message: 'User not found' });
 
         const isMember = (project.members || []).some((memberId) => memberId.toString() === requesterId.toString());
         if (!isMember) {
@@ -1876,24 +1717,22 @@ app.post('/api/projects/:id/members', async (req, res) => {
             return res.status(400).json({ success: false, message: 'User is already a project member' });
         }
 
-        await Project.findByIdAndUpdate(projectId, {
-            $addToSet: { members: friendId },
-            $set: { lastActivity: Date.now() },
-        });
+        await Projects.updateOne(
+            { _id: projectId },
+            { $addToSet: { members: friendId }, $set: { lastActivity: Date.now() } }
+        );
+        await Users.updateOne({ _id: friendId }, { $addToSet: { projects: projectId } });
 
-        await User.findByIdAndUpdate(friendId, { $addToSet: { projects: projectId } });
-
-        const activityMessage = new Message({
+        const { insertedId: msgId } = await Messages.insertOne({
             projectId,
             userId: requesterId,
             action: 'member-added',
             message: `Added ${friend.username} to the project`,
+            time: new Date(),
         });
-        await activityMessage.save();
-        await Project.findByIdAndUpdate(projectId, { $push: { activity: activityMessage._id } });
+        await Projects.updateOne({ _id: projectId }, { $push: { activity: msgId } });
 
         const populatedProject = await populateProjectDetail(projectId);
-
         res.json({
             success: true,
             project: formatProjectDetail(populatedProject),
@@ -1915,15 +1754,12 @@ app.delete('/api/projects/:id/members/:memberId', async (req, res) => {
     }
 
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
         if (project.ownerId.toString() !== requesterId.toString()) {
             return res.status(403).json({ success: false, message: 'Only the project owner can remove members' });
         }
-
         if (project.ownerId.toString() === memberId.toString()) {
             return res.status(400).json({ success: false, message: 'The owner cannot be removed from the project' });
         }
@@ -1933,22 +1769,22 @@ app.delete('/api/projects/:id/members/:memberId', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Member not found on this project' });
         }
 
-        await Project.findByIdAndUpdate(projectId, {
-            $pull: { members: memberId },
-            $set: { lastActivity: Date.now() },
-        });
-        await User.findByIdAndUpdate(memberId, { $pull: { projects: projectId } });
+        await Projects.updateOne(
+            { _id: projectId },
+            { $pull: { members: memberId }, $set: { lastActivity: Date.now() } }
+        );
+        await Users.updateOne({ _id: memberId }, { $pull: { projects: projectId } });
 
-        const removedUser = await User.findById(memberId, 'username').lean();
+        const removedUser = await Users.findOne({ _id: memberId }, { projection: { username: 1 } });
 
-        const activityMessage = new Message({
+        const { insertedId: msgId } = await Messages.insertOne({
             projectId,
             userId: requesterId,
             action: 'member-removed',
             message: removedUser ? `Removed ${removedUser.username} from the project` : 'Removed a project member',
+            time: new Date(),
         });
-        await activityMessage.save();
-        await Project.findByIdAndUpdate(projectId, { $push: { activity: activityMessage._id } });
+        await Projects.updateOne({ _id: projectId }, { $push: { activity: msgId } });
 
         const populatedProject = await populateProjectDetail(projectId);
         res.json({
@@ -1972,10 +1808,8 @@ app.post('/api/projects/:id/transfer-ownership', async (req, res) => {
     }
 
     try {
-        const project = await Project.findById(projectId).lean();
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
         if (project.ownerId.toString() !== requesterId.toString()) {
             return res.status(403).json({ success: false, message: 'Only the current owner can transfer ownership' });
@@ -1986,22 +1820,21 @@ app.post('/api/projects/:id/transfer-ownership', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ownership can only be transferred to an existing member' });
         }
 
-        await Project.findByIdAndUpdate(projectId, {
-            $set: { ownerId: newOwnerId, lastActivity: Date.now() },
-            $addToSet: { members: newOwnerId },
-        });
+        await Projects.updateOne(
+            { _id: projectId },
+            { $set: { ownerId: newOwnerId, lastActivity: Date.now() }, $addToSet: { members: newOwnerId } }
+        );
+        await Users.updateOne({ _id: newOwnerId }, { $addToSet: { projects: projectId } });
 
-        await User.findByIdAndUpdate(newOwnerId, { $addToSet: { projects: projectId } });
-
-        const newOwner = await User.findById(newOwnerId, 'username').lean();
-        const activityMessage = new Message({
+        const newOwner = await Users.findOne({ _id: newOwnerId }, { projection: { username: 1 } });
+        const { insertedId: msgId } = await Messages.insertOne({
             projectId,
             userId: requesterId,
             action: 'ownership-transferred',
             message: newOwner ? `Transferred ownership to ${newOwner.username}` : 'Transferred project ownership',
+            time: new Date(),
         });
-        await activityMessage.save();
-        await Project.findByIdAndUpdate(projectId, { $push: { activity: activityMessage._id } });
+        await Projects.updateOne({ _id: projectId }, { $push: { activity: msgId } });
 
         const populatedProject = await populateProjectDetail(projectId);
         res.json({
@@ -2024,7 +1857,7 @@ app.get('/api/projects/:id/files/:fileId/download', async (req, res) => {
     }
 
     try {
-        const project = await Project.findById(projectId).lean();
+        const project = await Projects.findOne({ _id: projectId });
         if (!project) {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
@@ -2057,76 +1890,89 @@ app.get('/api/search', async (req, res) => {
     }
 
     const regex = new RegExp(term, 'i');
-    let results = [];
 
     try {
         if (type === 'projects') {
-            results = await Project.find({
-                $or: [
-                    { name: regex },
-                    { tags: regex },
-                    { type: regex }
-                ]
-            }).populate('ownerId', 'username').lean();
-            
-        } else if (type === 'users') {
-            results = await User.find({
-                $or: [
-                    { username: regex },
-                    { fullName: regex },
-                    { email: regex }
-                ]
-            }).lean();
+            const projects = await Projects.find({
+                $or: [{ name: regex }, { tags: regex }, { type: regex }],
+            }).toArray();
 
-        } else if (type === 'tags') {
-            // Find projects that contain the tag
-            results = await Project.find({ tags: regex }).populate('ownerId', 'username').lean();
-        } else if (type === 'activity') {
-            results = await Message.find({
-                action: 'checked-in',
-                message: regex,
-            })
-                .populate('projectId', 'name image')
-                .populate('userId', 'username profileImage')
-                .lean();
+            const ownerIds = normalizeObjectIdArray(projects.map((project) => project.ownerId));
+            const ownerDocs = await fetchUsersByIds(ownerIds, 'username');
+            const ownerMap = docsToMapById(ownerDocs);
+
+            const formatted = projects.map((project) => ({
+                id: project._id.toString(),
+                name: project.name,
+                type: 'projects',
+                description: project.description || '',
+                imageUrl: buildPublicUrl(project.image),
+                owner: ownerMap.get(project.ownerId?.toString())?.username || 'unknown',
+            }));
+            return res.json({ success: true, results: formatted });
         }
 
-        // Format and send the results
-        const formattedResults = results.map(item => {
-            if (type === 'activity') {
+        if (type === 'users') {
+            const users = await Users.find({
+                $or: [{ username: regex }, { fullName: regex }, { email: regex }],
+            }).toArray();
+
+            const formatted = users.map((user) => ({
+                id: user._id.toString(),
+                name: user.username,
+                type: 'users',
+                description: user.bio || user.email || '',
+            }));
+            return res.json({ success: true, results: formatted });
+        }
+
+        if (type === 'tags') {
+            const taggedProjects = await Projects.find({ tags: regex }).toArray();
+            const formatted = taggedProjects.map((project) => ({
+                id: project._id.toString(),
+                name: project.name,
+                type: 'projects',
+                description: project.description || '',
+                imageUrl: buildPublicUrl(project.image),
+            }));
+            return res.json({ success: true, results: formatted });
+        }
+
+        if (type === 'activity') {
+            const activities = await Messages.find({ action: 'checked-in', message: regex }).toArray();
+            const projectIds = normalizeObjectIdArray(activities.map((activity) => activity.projectId));
+            const userIds = normalizeObjectIdArray(activities.map((activity) => activity.userId));
+
+            const [projects, users] = await Promise.all([
+                projectIds.length ? Projects.find({ _id: { $in: projectIds } }).toArray() : [],
+                userIds.length ? fetchUsersByIds(userIds, 'username profileImage') : [],
+            ]);
+
+            const projectMap = docsToMapById(projects);
+            const userMap = docsToMapById(users);
+
+            const formatted = activities.map((activity) => {
+                const project = projectMap.get(activity.projectId?.toString());
                 return {
-                    id: item._id.toString(),
-                    name: item.projectId?.name || 'Unknown project',
+                    id: activity._id.toString(),
+                    name: project?.name || 'Unknown project',
                     type: 'activity',
-                    description: item.message || '',
-                    projectId: item.projectId?._id?.toString(),
-                    projectImage: buildPublicUrl(item.projectId?.image),
-                    user: mapUserPreview(item.userId),
-                    time: item.time ? new Date(item.time).toLocaleString() : '',
+                    description: activity.message || '',
+                    projectId: project?._id?.toString(),
+                    projectImage: buildPublicUrl(project?.image || ''),
+                    user: mapUserPreview(userMap.get(activity.userId?.toString()) || activity.userId),
+                    time: activity.time ? new Date(activity.time).toLocaleString() : '',
                 };
-            }
+            });
+            return res.json({ success: true, results: formatted });
+        }
 
-            const formatted = {
-                id: item._id?.toString(),
-                name: item.username || item.name,
-                type: type === 'tags' ? 'projects' : type,
-                description: item.description || item.bio || item.email || '',
-            };
-
-            if (formatted.type === 'projects') {
-                formatted.imageUrl = buildPublicUrl(item.image);
-            }
-
-            return formatted;
-        });
-
-        res.json({ success: true, results: formattedResults });
+        return res.status(400).json({ success: false, message: 'Unsupported search type' });
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).json({ success: false, message: 'Server error during search' });
     }
 });
-
 
 // Catch-all handler for React routing
 app.get('*', (req, res) => {
