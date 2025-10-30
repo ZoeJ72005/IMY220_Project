@@ -1,4 +1,5 @@
-﻿import React, { useState } from 'react';
+﻿// 2_Joubert 05084360
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/MessagesComponent.css';
 

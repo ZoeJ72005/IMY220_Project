@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 import React from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/FriendsList.css';

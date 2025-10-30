@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import '../styles/EditProfile.css';
 import { resolveProfileImage } from '../utils/avatar';

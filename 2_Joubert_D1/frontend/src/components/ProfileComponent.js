@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 import React, { useMemo } from 'react';
 import '../styles/ProfileComponent.css';
 import { resolveProfileImage } from '../utils/avatar';

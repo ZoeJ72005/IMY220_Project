@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 import React, { useState } from 'react';
 import '../styles/DiscussionBoard.css';
 

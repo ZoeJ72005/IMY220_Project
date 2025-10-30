@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 import React, { useEffect, useState } from 'react';
 import '../styles/PendingRequestsCard.css';
 import { resolveProfileImage } from '../utils/avatar';
