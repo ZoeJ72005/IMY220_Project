@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
-import './FilesComponent.css';
+﻿// 2_Joubert 05084360
+import React, { useState } from 'react';
+import '../styles/FilesComponent.css';
 
 const formatBytes = (bytes) => {
   if (!bytes && bytes !== 0) return '0 B';

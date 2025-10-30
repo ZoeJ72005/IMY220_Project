@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 

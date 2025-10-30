@@ -1,5 +1,6 @@
+// 2_Joubert 05084360
 import React, { useState } from 'react';
-import './DiscussionBoard.css';
+import '../styles/DiscussionBoard.css';
 
 const DiscussionBoard = ({
   discussion = [],

@@ -1,0 +1,813 @@
+{
+  "users": [
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "username": "test_user",
+      "email": "test@test.com",
+      "password": "test1234",
+      "fullName": "Test User",
+      "profileImage": "",
+      "bio": "I am the primary test user for this application.",
+      "location": "Pretoria, SA",
+      "company": "University of Pretoria",
+      "website": "https://www.up.ac.za",
+      "languages": ["JavaScript", "HTML"],
+      "joinDate": { "$date": "2024-10-01T10:00:00.000Z" },
+      "role": "user",
+      "friends": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a004" }
+      ],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a001" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a002" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "username": "admin_user",
+      "email": "admin@coderepo.dev",
+      "password": "admin1234",
+      "fullName": "Admin User",
+      "profileImage": "",
+      "bio": "I am the site administrator.",
+      "location": "System Root",
+      "company": "CodeRepo Inc.",
+      "website": "",
+      "languages": ["All"],
+      "joinDate": { "$date": "2024-10-01T09:00:00.000Z" },
+      "role": "admin",
+      "friends": [{ "$oid": "6723b6b1f0a1e2a1b7a8a003" }],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a003" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "username": "jane_dev",
+      "email": "jane@example.com",
+      "password": "password123",
+      "fullName": "Jane Doe",
+      "profileImage": "",
+      "bio": "Full-stack developer with a passion for React and Node.js.",
+      "location": "Cape Town, SA",
+      "company": "DevCo",
+      "website": "https://jane.dev",
+      "languages": ["JavaScript", "React", "Node.js"],
+      "joinDate": { "$date": "2024-10-02T11:00:00.000Z" },
+      "role": "user",
+      "friends": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a004" }
+      ],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a004" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a005" }
+      ],
+      "pendingFriendRequests": [{ "$oid": "6723b6b1f0a1e2a1b7a8a005" }],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+      "username": "alex_code",
+      "email": "alex@example.com",
+      "password": "password123",
+      "fullName": "Alex Smith",
+      "profileImage": "",
+      "bio": "Python and data science enthusiast.",
+      "location": "Johannesburg, SA",
+      "company": "DataCorp",
+      "website": "",
+      "languages": ["Python", "Pandas", "SQL"],
+      "joinDate": { "$date": "2024-10-03T12:00:00.000Z" },
+      "role": "user",
+      "friends": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a003" }
+      ],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a006" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "username": "sam_script",
+      "email": "sam@example.com",
+      "password": "password123",
+      "fullName": "Sam Wilson",
+      "profileImage": "",
+      "bio": "Mobile developer, focusing on native iOS and Android.",
+      "location": "Durban, SA",
+      "company": "Mobile Solutions",
+      "website": "",
+      "languages": ["Swift", "Kotlin", "Java"],
+      "joinDate": { "$date": "2024-10-04T13:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a007" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a008" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": [{ "$oid": "6723b6b1f0a1e2a1b7a8a003" }]
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a006" },
+      "username": "chris_gamedev",
+      "email": "chris@example.com",
+      "password": "password123",
+      "fullName": "Chris Lee",
+      "profileImage": "",
+      "bio": "Game developer, C# and Unity expert.",
+      "location": "Remote",
+      "company": "Indie Games",
+      "website": "",
+      "languages": ["C#", "Unity", "HLSL"],
+      "joinDate": { "$date": "2024-10-05T14:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [{ "$oid": "6723b6c1f0a1e2a1b7a8a009" }],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+      "username": "pat_design",
+      "email": "pat@example.com",
+      "password": "password123",
+      "fullName": "Pat Kim",
+      "profileImage": "",
+      "bio": "UI/UX Designer who loves clean interfaces and CSS.",
+      "location": "Stellenbosch, SA",
+      "company": "DesignFirst",
+      "website": "",
+      "languages": ["CSS", "Figma", "HTML"],
+      "joinDate": { "$date": "2024-10-06T15:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [{ "$oid": "6723b6c1f0a1e2a1b7a8a010" }],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "username": "morgan_ops",
+      "email": "morgan@example.com",
+      "password": "password123",
+      "fullName": "Morgan Bailey",
+      "profileImage": "",
+      "bio": "DevOps engineer. Docker, K8s, and cloud infrastructure.",
+      "location": "Remote",
+      "company": "CloudSys",
+      "website": "",
+      "languages": ["Docker", "Terraform", "Bash"],
+      "joinDate": { "$date": "2024-10-07T16:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a010" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+      "username": "taylor_ml",
+      "email": "taylor@example.com",
+      "password": "password123",
+      "fullName": "Taylor River",
+      "profileImage": "",
+      "bio": "Machine Learning researcher.",
+      "location": "Pretoria, SA",
+      "company": "AI Labs",
+      "website": "",
+      "languages": ["Python", "TensorFlow", "PyTorch"],
+      "joinDate": { "$date": "2024-10-08T17:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [{ "$oid": "6723b6c1f0a1e2a1b7a8a006" }],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    },
+    {
+      "_id": { "$oid": "6723b6b1f0a1e2a1b7a8a010" },
+      "username": "casey_db",
+      "email": "casey@example.com",
+      "password": "password123",
+      "fullName": "Casey Jordan",
+      "profileImage": "",
+      "bio": "Database administrator. SQL and NoSQL.",
+      "location": "Johannesburg, SA",
+      "company": "DataCorp",
+      "website": "",
+      "languages": ["SQL", "MongoDB", "PostgreSQL"],
+      "joinDate": { "$date": "2024-10-09T18:00:00.000Z" },
+      "role": "user",
+      "friends": [],
+      "projects": [
+        { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+        { "$oid": "6723b6c1f0a1e2a1b7a8a007" }
+      ],
+      "pendingFriendRequests": [],
+      "outgoingFriendRequests": []
+    }
+  ],
+  "projecttypes": [
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a001" },
+      "name": "web-application",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a002" },
+      "name": "desktop-application",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a003" },
+      "name": "mobile-application",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a004" },
+      "name": "framework",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a005" },
+      "name": "library",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a006" },
+      "name": "tool",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a007" },
+      "name": "game",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a008" },
+      "name": "service",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6a1f0a1e2a1b7a8a009" },
+      "name": "other",
+      "createdAt": { "$date": "2024-10-01T08:00:00.000Z" }
+    }
+  ],
+  "projects": [
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a001" },
+      "name": "Test User Project",
+      "description": "This is the first project for the main test user, test@test.com. It's a simple web page.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "tags": ["html", "css", "javascript"],
+      "type": "web-application",
+      "version": "v1.0.0",
+      "createdDate": { "$date": "2024-10-01T10:05:00.000Z" },
+      "lastActivity": { "$date": "2024-10-01T10:05:00.000Z" },
+      "members": [{ "$oid": "6723b6b1f0a1e2a1b7a8a001" }],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a001/image/web-project.png",
+      "files": [
+        {
+          "_id": { "$oid": "6723b6d1f0a1e2a1b7a8a001" },
+          "originalName": "index.html",
+          "storedName": "index-12345.html",
+          "mimeType": "text/html",
+          "size": 1024,
+          "uploadedAt": { "$date": "2024-10-01T10:05:00.000Z" },
+          "uploadedBy": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+          "relativePath": "projects/6723b6c1f0a1e2a1b7a8a001/files/index-12345.html"
+        }
+      ],
+      "downloads": 5,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [{ "$oid": "6723b6e1f0a1e2a1b7a8a001" }]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "name": "Admin Control Panel",
+      "description": "A dashboard for site administrators. This is the project the test user will check in to.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "tags": ["react", "nodejs", "admin"],
+      "type": "web-application",
+      "version": "v1.1.0",
+      "createdDate": { "$date": "2024-10-02T14:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-25T14:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a010" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a002/image/admin-panel.png",
+      "files": [
+        {
+          "_id": { "$oid": "6723b6d1f0a1e2a1b7a8a002" },
+          "originalName": "server.js",
+          "storedName": "server-54321.js",
+          "mimeType": "text/javascript",
+          "size": 8192,
+          "uploadedAt": { "$date": "2024-10-02T14:00:00.000Z" },
+          "uploadedBy": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+          "relativePath": "projects/6723b6c1f0a1e2a1b7a8a002/files/server-54321.js"
+        }
+      ],
+      "downloads": 22,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a002" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a003" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+      "name": "Cloud Deployment Tool",
+      "description": "CLI tool for deploying services to our internal cloud.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "tags": ["go", "docker", "cli", "devops"],
+      "type": "tool",
+      "version": "v0.5.0",
+      "createdDate": { "$date": "2024-10-03T10:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-24T11:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a002" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a003/image/cli-tool.png",
+      "files": [],
+      "downloads": 15,
+      "checkoutStatus": "checked-out",
+      "checkedOutBy": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a004" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a005" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a006" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a004" },
+      "name": "JS Utils Library",
+      "description": "A collection of useful JavaScript utility functions.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "tags": ["javascript", "library", "npm"],
+      "type": "library",
+      "version": "v2.3.1",
+      "createdDate": { "$date": "2024-10-04T16:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-23T15:00:00.000Z" },
+      "members": [{ "$oid": "6723b6b1f0a1e2a1b7a8a003" }],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a004/image/js-logo.png",
+      "files": [
+        {
+          "_id": { "$oid": "6723b6d1f0a1e2a1b7a8a003" },
+          "originalName": "array.js",
+          "storedName": "array-98765.js",
+          "mimeType": "text/javascript",
+          "size": 4096,
+          "uploadedAt": { "$date": "2024-10-04T16:00:00.000Z" },
+          "uploadedBy": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+          "relativePath": "projects/6723b6c1f0a1e2a1b7a8a004/files/array-98765.js"
+        }
+      ],
+      "downloads": 112,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a007" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a008" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "name": "Data Analysis API",
+      "description": "API for running complex data analysis models.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+      "tags": ["python", "flask", "pandas", "api"],
+      "type": "service",
+      "version": "v1.0.0",
+      "createdDate": { "$date": "2024-10-05T10:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-22T18:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a003" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a005/image/data-api.png",
+      "files": [],
+      "downloads": 45,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a009" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a010" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a006" },
+      "name": "ML Model Trainer",
+      "description": "Training scripts for TensorFlow models.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+      "tags": ["python", "tensorflow", "machine-learning"],
+      "type": "tool",
+      "version": "v0.2.0",
+      "createdDate": { "$date": "2024-10-06T11:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-21T16:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a004" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a006/image/ml-model.png",
+      "files": [],
+      "downloads": 8,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a011" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a012" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a007" },
+      "name": "iOS Fitness App",
+      "description": "Mobile application for tracking workouts on iOS.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "tags": ["swift", "ios", "mobile"],
+      "type": "mobile-application",
+      "version": "v1.4.0",
+      "createdDate": { "$date": "2024-10-07T09:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-20T14:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a010" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a007/image/mobile-app.png",
+      "files": [],
+      "downloads": 76,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a013" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a014" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a008" },
+      "name": "Android Launcher",
+      "description": "A custom Android home screen launcher.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "tags": ["kotlin", "android", "java", "mobile"],
+      "type": "mobile-application",
+      "version": "v1.1.0",
+      "createdDate": { "$date": "2024-10-08T15:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-19T13:00:00.000Z" },
+      "members": [{ "$oid": "6723b6b1f0a1e2a1b7a8a005" }],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a008/image/android-app.png",
+      "files": [],
+      "downloads": 30,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a015" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a016" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a009" },
+      "name": "Unity 3D Game",
+      "description": "A 3D adventure game being built in Unity.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a006" },
+      "tags": ["c#", "unity", "gamedev"],
+      "type": "game",
+      "version": "v0.1.0-alpha",
+      "createdDate": { "$date": "2024-10-09T11:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-18T12:00:00.000Z" },
+      "members": [{ "$oid": "6723b6b1f0a1e2a1b7a8a006" }],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a009/image/game-dev.png",
+      "files": [],
+      "downloads": 12,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a017" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a018" }
+      ]
+    },
+    {
+      "_id": { "$oid": "6723b6c1f0a1e2a1b7a8a010" },
+      "name": "Design System UI",
+      "description": "A component library for our new design system.",
+      "ownerId": { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+      "tags": ["css", "react", "design-system", "ui-kit"],
+      "type": "library",
+      "version": "v1.2.0",
+      "createdDate": { "$date": "2024-10-10T08:00:00.000Z" },
+      "lastActivity": { "$date": "2024-10-25T17:00:00.000Z" },
+      "members": [
+        { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+        { "$oid": "6723b6b1f0a1e2a1b7a8a008" }
+      ],
+      "image": "projects/6723b6c1f0a1e2a1b7a8a010/image/design-system.png",
+      "files": [],
+      "downloads": 40,
+      "checkoutStatus": "checked-in",
+      "checkedOutBy": null,
+      "activity": [
+        { "$oid": "6723b6e1f0a1e2a1b7a8a019" },
+        { "$oid": "6723b6e1f0a1e2a1b7a8a020" }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a001" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a001" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "action": "created",
+      "message": "Project created with initial files",
+      "time": { "$date": "2024-10-01T10:05:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a002" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "action": "created",
+      "message": "Created admin dashboard project",
+      "time": { "$date": "2024-10-02T14:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a003" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "action": "checked-in",
+      "message": "Fixed the login bug and updated user models.",
+      "time": { "$date": "2024-10-25T14:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a004" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "action": "created",
+      "message": "Initial commit for CLI tool",
+      "time": { "$date": "2024-10-03T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a005" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "action": "checked-out",
+      "message": "Checked out project for changes",
+      "time": { "$date": "2024-10-24T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a006" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "action": "commented",
+      "message": "Looks good! Can you add the Dockerfile?",
+      "time": { "$date": "2024-10-24T11:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a007" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a004" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "action": "created",
+      "message": "First version of JS utils",
+      "time": { "$date": "2024-10-04T16:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a008" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a004" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "action": "checked-in",
+      "message": "Added string and number helpers.",
+      "time": { "$date": "2024-10-23T15:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a009" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+      "action": "created",
+      "message": "Initial API setup",
+      "time": { "$date": "2024-10-05T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a010" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "action": "checked-in",
+      "message": "Refactored the data processing endpoint.",
+      "time": { "$date": "2024-10-22T18:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a011" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a006" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+      "action": "created",
+      "message": "Added base training scripts",
+      "time": { "$date": "2024-10-06T11:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a012" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a006" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+      "action": "checked-in",
+      "message": "Improved model accuracy, new data pipeline.",
+      "time": { "$date": "2024-10-21T16:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a013" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a007" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "created",
+      "message": "Initial iOS app structure",
+      "time": { "$date": "2024-10-07T09:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a014" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a007" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "checked-in",
+      "message": "Added HealthKit integration.",
+      "time": { "$date": "2024-10-20T14:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a015" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a008" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "created",
+      "message": "Base Android launcher",
+      "time": { "$date": "2024-10-08T15:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a016" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a008" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "checked-in",
+      "message": "Added widget support.",
+      "time": { "$date": "2024-10-19T13:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a017" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a009" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a006" },
+      "action": "created",
+      "message": "New game project setup",
+      "time": { "$date": "2024-10-09T11:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a018" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a009" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a006" },
+      "action": "checked-in",
+      "message": "Implemented player controller and physics.",
+      "time": { "$date": "2024-10-18T12:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a019" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a010" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+      "action": "created",
+      "message": "Initial components for design system",
+      "time": { "$date": "2024-10-10T08:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a020" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a010" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+      "action": "checked-in",
+      "message": "Added Button and Input components.",
+      "time": { "$date": "2024-10-25T17:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a021" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a001" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "action": "checked-in",
+      "message": "Updated the stylesheet.",
+      "time": { "$date": "2024-10-11T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a022" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "action": "checked-in",
+      "message": "Patched security vulnerability.",
+      "time": { "$date": "2024-10-12T11:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a023" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a003" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a008" },
+      "action": "checked-in",
+      "message": "Refactored deployment logic.",
+      "time": { "$date": "2024-10-13T12:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a024" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a004" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "action": "checked-in",
+      "message": "Added object manipulation helpers.",
+      "time": { "$date": "2024-10-14T13:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a025" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+      "action": "checked-in",
+      "message": "Initial implementation of auth endpoint.",
+      "time": { "$date": "2024-10-15T14:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a026" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a006" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a009" },
+      "action": "checked-in",
+      "message": "Added new data sources for training.",
+      "time": { "$date": "2024-10-16T15:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a027" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a007" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "checked-in",
+      "message": "Rewrote networking layer in Swift Concurrency.",
+      "time": { "$date": "2024-10-17T16:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a028" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a008" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a005" },
+      "action": "checked-in",
+      "message": "Optimized app drawer performance.",
+      "time": { "$date": "2024-10-18T17:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a029" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a009" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a006" },
+      "action": "checked-in",
+      "message": "Added main menu and level select screen.",
+      "time": { "$date": "2024-10-19T18:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6e1f0a1e2a1b7a8a030" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a010" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a007" },
+      "action": "checked-in",
+      "message": "Added Modal and Tooltip components.",
+      "time": { "$date": "2024-10-20T19:00:00.000Z" }
+    }
+  ],
+  "discussionmessages": [
+    {
+      "_id": { "$oid": "6723b6f1f0a1e2a1b7a8a001" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a001" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "message": "Welcome to my first project! Let me know what you think.",
+      "createdAt": { "$date": "2024-10-01T10:10:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6f1f0a1e2a1b7a8a002" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a002" },
+      "message": "@test_user thanks for the help on the v1.1.0 patch. The login form feels much more secure now.",
+      "createdAt": { "$date": "2024-10-25T14:05:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6f1f0a1e2a1b7a8a003" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a002" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a001" },
+      "message": "No problem! Glad I could help.",
+      "createdAt": { "$date": "2024-10-25T14:10:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6f1f0a1e2a1b7a8a004" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a003" },
+      "message": "@alex_code I'm planning to use this API for my new project. Is the documentation up to date?",
+      "createdAt": { "$date": "2024-10-23T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "6723b6f1f0a1e2a1b7a8a005" },
+      "projectId": { "$oid": "6723b6c1f0a1e2a1b7a8a005" },
+      "userId": { "$oid": "6723b6b1f0a1e2a1b7a8a004" },
+      "message": "@jane_dev Yes, I updated the docs with my last check-in. Let me know if you run into any issues.",
+      "createdAt": { "$date": "2024-10-23T11:00:00.000Z" }
+    }
+  ]
+}

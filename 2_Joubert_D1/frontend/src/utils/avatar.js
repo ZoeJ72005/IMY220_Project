@@ -1,3 +1,4 @@
+// 2_Joubert 05084360
 const palettes = ['b6e3f4', 'c0aede', 'd1d4f9', 'ffd5dc', 'ffdfbf'];
 const styles = ['bottts-neutral', 'thumbs', 'shapes', 'pixel-art'];
 

@@ -1,6 +1,7 @@
+// 2_Joubert 05084360
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './FriendsList.css';
+import '../styles/FriendsList.css';
 import { resolveProfileImage } from '../utils/avatar';
 
 const FriendsList = ({ friends, isOwnProfile }) => {

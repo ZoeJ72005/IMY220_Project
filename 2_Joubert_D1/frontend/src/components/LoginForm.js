@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
-import './LoginForm.css';
+﻿// 2_Joubert 05084360
+import React, { useState } from 'react';
+import '../styles/LoginForm.css';
 
 const LoginForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({

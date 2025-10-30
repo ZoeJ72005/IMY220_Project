@@ -1,7 +1,8 @@
+// 2_Joubert 05084360
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import './ComponentBase.css';
-import './ProjectComponent.css';
+import '../styles/ComponentBase.css';
+import '../styles/ProjectComponent.css';
 
 const ProjectComponent = ({
   project,
