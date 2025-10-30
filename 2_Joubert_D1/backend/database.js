@@ -1,65 +1,113 @@
-const mongoose = require('mongoose');
+const { MongoClient, ObjectId } = require('mongodb');
+
+let client;
+let db;
+
+const COLLECTION_MAP = {
+    Users: 'users',
+    Projects: 'projects',
+    Messages: 'messages',
+    ProjectTypes: 'projecttypes',
+    DiscussionMessages: 'discussionmessages',
+};
+
+const collections = {};
+
+const ensureCollectionsInitialised = () => {
+    if (!db) {
+        throw new Error('Database connection not initialised. Call connectDB() first.');
+    }
+
+    for (const [key, name] of Object.entries(COLLECTION_MAP)) {
+        if (!collections[key]) {
+            collections[key] = db.collection(name);
+        }
+    }
+
+    return collections;
+};
 
 const connectDB = async () => {
+    if (db) {
+        return { db, collections: ensureCollectionsInitialised() };
+    }
+
+    const mongoUri = process.env.MONGODB_URI;
+
+    if (!mongoUri || typeof mongoUri !== 'string' || !mongoUri.trim()) {
+        console.error('> MongoDB connection failed: MONGODB_URI environment variable is not set.');
+        process.exit(1);
+    }
+
     try {
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
+        client = new MongoClient(mongoUri, {
+            serverSelectionTimeoutMS: 10000,
         });
+
+        await client.connect();
+
+        const dbName = process.env.MONGODB_DB_NAME;
+        db = dbName ? client.db(dbName) : client.db();
+
+        if (!db) {
+            throw new Error('Unable to resolve database from connection string.');
+        }
+
         console.log('> MongoDB connection established successfully');
+        return { db, collections: ensureCollectionsInitialised() };
     } catch (error) {
         console.error('> MongoDB connection failed:', error.message);
         process.exit(1);
     }
 };
 
-const userSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    fullName: { type: String },
-    bio: { type: String },
-    location: { type: String },
-    company: { type: String },
-    website: { type: String },
-    languages: [{ type: String }],
-    joinDate: { type: Date, default: Date.now },
-    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-});
+const getCollections = () => ensureCollectionsInitialised();
 
-const projectSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    description: { type: String, required: true },
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    tags: [{ type: String }],
-    type: { type: String, required: true },
-    version: { type: String, required: true },
-    createdDate: { type: Date, default: Date.now },
-    lastActivity: { type: Date, default: Date.now },
-    checkoutStatus: { type: String, enum: ['checked-in', 'checked-out'], default: 'checked-in' },
-    checkedOutBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    downloads: { type: Number, default: 0 },
-    image: { type: String },
-    files: [{
-        id: Number,
-        name: String,
-        size: String,
-        modified: String
-    }],
-    activity: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }]
-});
+const closeDB = async () => {
+    if (client) {
+        await client.close();
+        client = null;
+        db = null;
+        Object.keys(collections).forEach((key) => {
+            delete collections[key];
+        });
+    }
+};
 
-const messageSchema = new mongoose.Schema({
-    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    action: { type: String, required: true },
-    message: { type: String },
-    time: { type: Date, default: Date.now }
-});
+const isValidObjectId = (value) => {
+    if (!value) {
+        return false;
+    }
 
-const User = mongoose.model('User', userSchema);
-const Project = mongoose.model('Project', projectSchema);
-const Message = mongoose.model('Message', messageSchema);
+    if (value instanceof ObjectId) {
+        return true;
+    }
 
-module.exports = { connectDB, User, Project, Message };
+    if (typeof value === 'string') {
+        return ObjectId.isValid(value);
+    }
+
+    return false;
+};
+
+const toObjectId = (value) => {
+    if (!value) {
+        return null;
+    }
+    if (value instanceof ObjectId) {
+        return value;
+    }
+    if (!ObjectId.isValid(value)) {
+        return null;
+    }
+    return new ObjectId(value);
+};
+
+module.exports = {
+    connectDB,
+    getCollections,
+    closeDB,
+    ObjectId,
+    isValidObjectId,
+    toObjectId,
+};

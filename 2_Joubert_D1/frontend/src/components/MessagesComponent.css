@@ -1,0 +1,161 @@
+.project-messages {
+  font-family: var(--font-primary);
+  display: grid;
+  gap: 1.5rem;
+  color: var(--terminal-text-primary);
+}
+
+.project-messages__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+}
+
+.project-messages__title {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.project-messages__cursor {
+  animation: blink 1s infinite;
+}
+
+.project-messages__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+}
+
+.project-messages__list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.project-messages__item {
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  background: var(--terminal-bg);
+}
+
+.project-messages__item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+}
+
+.project-messages__author {
+  color: var(--terminal-text-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.project-messages__author:hover {
+  color: var(--terminal-accent);
+}
+
+.project-messages__action {
+  color: var(--terminal-text-secondary);
+}
+
+.project-messages__time {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+}
+
+.project-messages__comment {
+  font-size: 0.85rem;
+  color: var(--terminal-text-primary);
+  line-height: 1.6;
+  border-left: 3px solid var(--terminal-border-dim);
+  padding-left: 1rem;
+  margin: 0;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.project-messages__empty {
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  background: var(--terminal-bg);
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+}
+
+.project-messages__form {
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  background: var(--terminal-bg);
+}
+
+.project-messages__form-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-text-secondary);
+  font-weight: 600;
+}
+
+.project-messages__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-text-secondary);
+}
+
+.project-messages__textarea {
+  /* Inherits from .terminal-input */
+  width: 100%;
+  min-height: 100px;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.project-messages__error {
+  border: 1px solid var(--terminal-error);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--terminal-error);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.project-messages__submit {
+  /* Inherits from .terminal-button */
+  justify-self: end;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.8rem;
+  /* Use the .terminal-button--primary modifier */
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  color: #000;
+}
+
+.project-messages__submit:hover:not(:disabled) {
+  background: var(--terminal-accent-hover);
+  border-color: var(--terminal-accent-hover);
+}
+
+.project-messages__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}

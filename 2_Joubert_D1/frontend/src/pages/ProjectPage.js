@@ -1,133 +1,728 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProjectComponent from '../components/ProjectComponent';
 import FilesComponent from '../components/FilesComponent';
 import MessagesComponent from '../components/MessagesComponent';
 import EditProject from '../components/EditProject';
-// No external CSS import needed
+import DiscussionBoard from '../components/DiscussionBoard';
 
-const ProjectPage = ({ user, onLogout }) => {
+const PROJECT_TABS = ['overview', 'files', 'activity', 'history', 'insights', 'discussion'];
+
+const ProjectPage = ({ user, onLogout, theme, onToggleTheme }) => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
-  const [checkoutMessage, setCheckoutMessage] = useState('');
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [checkinForm, setCheckinForm] = useState({
+    message: '',
+    version: '',
+    files: [],
+  });
+  const [checkinFileInputKey, setCheckinFileInputKey] = useState(0);
+  const [discussion, setDiscussion] = useState([]);
+  const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackError, setRollbackError] = useState('');
 
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(`/api/projects/${projectId}`);
       const data = await response.json();
       if (data.success) {
         setProject(data.project);
       } else {
-        console.error(data.message);
+        setError(data.message || 'Unable to load project.');
       }
-    } catch (error) {
-      console.error('Error fetching project:', error);
+    } catch (fetchError) {
+      setError('Network error while loading project.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  const fetchDiscussion = useCallback(async () => {
+    if (!projectId) return;
+    setDiscussionLoading(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/discussion`);
+      const data = await response.json();
+      if (data.success) {
+        setDiscussion(data.discussion || []);
+      } else {
+        console.error('Unable to load discussion:', data.message);
+        setDiscussion([]);
+      }
+    } catch (discussionError) {
+      console.error('Network error while loading discussion:', discussionError);
+      setDiscussion([]);
+    } finally {
+      setDiscussionLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
     fetchProject();
-  }, [projectId]);
+  }, [fetchProject]);
 
-  const isOwner = project && project.owner === user.username;
-  const isMember = project && project.members.includes(user.username);
+  useEffect(() => {
+    fetchDiscussion();
+  }, [fetchDiscussion]);
 
-  const handleEditToggle = () => setIsEditing(prev => !prev);
-  
-  const handleProjectUpdate = async (updatedData) => {
+  useEffect(() => {
+    if (project?.version) {
+      setCheckinForm((prev) => ({
+        ...prev,
+        version: project.version,
+      }));
+    }
+  }, [project?.version]);
+
+  const isOwner = project?.owner?.id === user.id;
+  const isMember = isOwner || project?.members?.some((member) => member.id === user.id);
+  const isCheckedOutByUser =
+    project?.checkoutStatus === 'checked-out' && project?.checkedOutBy?.id === user.id;
+
+  const availableFriends = useMemo(() => {
+    if (!project) return [];
+    const memberIds = new Set(project.members?.map((member) => member.id));
+    return (user.friends || []).filter((friend) => !memberIds.has(friend.id));
+  }, [project, user.friends]);
+
+  const canRollback = isOwner || user.role === 'admin';
+  const versionHistory = project?.versionHistory || [];
+
+  const activityStats = useMemo(() => {
+    if (!project?.activity || !project.activity.length) {
+      return [];
+    }
+    const counts = project.activity.reduce((acc, entry) => {
+      const action = entry.action || 'event';
+      acc[action] = (acc[action] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([action, count]) => ({ action, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [project?.activity]);
+
+  const maxStatCount = activityStats.length
+    ? Math.max(...activityStats.map((stat) => stat.count))
+    : 0;
+
+  const projectTabClass = (tab) => [
+    'px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out',
+    activeTab === tab
+      ? 'bg-terminal-text text-terminal-bg'
+      : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent',
+  ].join(' ');
+
+  const renderActiveTabContent = () => {
+    switch (activeTab) {
+      case 'files':
+        return (
+          <div className="animate-fade-in">
+            <FilesComponent
+              files={project.files}
+              canEdit={isMember && isCheckedOutByUser}
+              checkoutStatus={project.checkoutStatus}
+            />
+          </div>
+        );
+      case 'activity':
+        return (
+          <div className="animate-fade-in">
+            <MessagesComponent
+              projectId={project.id}
+              messages={project.activity || []}
+              currentUser={user}
+              canAddMessage={isMember}
+              onMessageAdded={handleMessageAdded}
+            />
+
+            {isMember && (
+              <div className="mt-8 space-y-3 border border-terminal-dim rounded-lg bg-terminal-input-bg/40 p-4">
+                <h4 className="text-sm text-terminal-accent flex items-center justify-between">
+                  &gt; CHECKIN_CHANGES
+                  {project.checkoutStatus === 'checked-in' && (
+                    <span className="text-terminal-warning text-xs">
+                      Project must be checked out before submitting a check-in.
+                    </span>
+                  )}
+                </h4>
+
+                <textarea
+                  className="terminal-input w-full text-sm p-2"
+                  rows="3"
+                  value={checkinForm.message}
+                  onChange={(event) =>
+                    setCheckinForm((prev) => ({ ...prev, message: event.target.value }))
+                  }
+                  placeholder="Describe your changes before checking in..."
+                  disabled={!isCheckedOutByUser}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-terminal-dim mb-1">UPDATED_VERSION</label>
+                    <input
+                      type="text"
+                      className="terminal-input text-sm p-2"
+                      value={checkinForm.version}
+                      onChange={(event) =>
+                        setCheckinForm((prev) => ({ ...prev, version: event.target.value }))
+                      }
+                      disabled={!isCheckedOutByUser}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-terminal-dim mb-1">
+                      UPLOAD_NEW_FILES (optional)
+                    </label>
+                    <input
+                      key={checkinFileInputKey}
+                      type="file"
+                      multiple
+                      className="terminal-input text-sm p-2"
+                      onChange={handleCheckinFilesChange}
+                      disabled={!isCheckedOutByUser}
+                    />
+                    {checkinForm.files.length > 0 && (
+                      <div className="text-[11px] text-terminal-dim mt-1">
+                        {checkinForm.files.length} file(s) selected
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCheckin}
+                  className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full"
+                  disabled={!isCheckedOutByUser}
+                >
+                  {isCheckedOutByUser ? 'COMMIT & CHECKIN' : 'CHECKED_OUT_BY_ANOTHER_MEMBER'}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case 'history':
+        return (
+          <div className="animate-fade-in">
+            {rollbackError && (
+              <div className="mb-3 border border-terminal-error text-terminal-error text-xs p-3">
+                ERROR: {rollbackError}
+              </div>
+            )}
+            {versionHistory.length === 0 ? (
+              <div className="text-sm text-terminal-dim">No version history captured yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {versionHistory.map((entry, index) => {
+                  const isCurrentVersion = index === 0 && entry.version === project.version;
+                  const timestamp = entry.createdAt
+                    ? new Date(entry.createdAt).toLocaleString()
+                    : 'Unknown date';
+                  return (
+                    <article
+                      key={entry.id}
+                      className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40 space-y-2"
+                    >
+                      <header className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h5 className="text-terminal-accent text-sm">&gt; {entry.version}</h5>
+                          <div className="text-[11px] text-terminal-dim">
+                            {timestamp} - {entry.user?.username || 'unknown'}
+                          </div>
+                        </div>
+                        {canRollback && !isCurrentVersion && (
+                          <button
+                            type="button"
+                            className="terminal-button text-[11px] px-3 py-1 bg-transparent text-terminal-accent border border-terminal-accent"
+                            disabled={rollbackLoading}
+                            onClick={() => handleRollback(entry.id, entry.version)}
+                          >
+                            {rollbackLoading ? 'ROLLBACK...' : 'ROLLBACK'}
+                          </button>
+                        )}
+                        {isCurrentVersion && (
+                          <span className="text-[10px] text-terminal-warning uppercase tracking-wide">
+                            Current version
+                          </span>
+                        )}
+                      </header>
+                      {entry.message && (
+                        <p className="text-sm text-terminal-text leading-relaxed">{entry.message}</p>
+                      )}
+                      <div className="text-[11px] text-terminal-dim">
+                        {entry.files?.length || 0} file(s) captured in this snapshot
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      case 'insights':
+        return (
+          <div className="animate-fade-in">
+            {activityStats.length === 0 ? (
+              <div className="text-sm text-terminal-dim">No recorded activity yet.</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Versions</div>
+                    <div className="text-terminal-text text-lg font-bold">{versionHistory.length}</div>
+                  </div>
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Check-ins</div>
+                    <div className="text-terminal-text text-lg font-bold">
+                      {activityStats.find((stat) => stat.action === 'checked-in')?.count || 0}
+                    </div>
+                  </div>
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Team Size</div>
+                    <div className="text-terminal-text text-lg font-bold">
+                      {project.members?.length || 0}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <h5 className="text-terminal-accent text-sm">&gt; ACTIVITY_BREAKDOWN</h5>
+                  {activityStats.map((stat) => {
+                    const percent = maxStatCount
+                      ? Math.max(6, (stat.count / maxStatCount) * 100)
+                      : 0;
+                    return (
+                      <div key={stat.action} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] text-terminal-text uppercase tracking-wide">
+                          <span>{stat.action}</span>
+                          <span>{stat.count}</span>
+                        </div>
+                        <div
+                          className="w-full h-2 rounded overflow-hidden"
+                          style={{ background: 'var(--terminal-border-dim)' }}
+                        >
+                          <div
+                            className="h-full"
+                            style={{
+                              width: `${percent}%`,
+                              background: 'var(--terminal-accent)',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'discussion':
+        return (
+          <div className="animate-fade-in">
+            <DiscussionBoard
+              discussion={discussion}
+              loading={discussionLoading}
+              canDiscuss={isMember}
+              onSendMessage={handleDiscussionPost}
+            />
+          </div>
+        );
+      case 'overview':
+      default:
+        return (
+          <div className="animate-fade-in">
+            <div className="flex flex-col lg:flex-row gap-6">
+              {project.imageUrl && (
+                <div className="max-w-xs flex-shrink-0">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={toggleImageModal}
+                    onKeyDown={(e) => e.key === 'Enter' && toggleImageModal()}
+                    className="cursor-pointer border border-terminal-border rounded overflow-hidden shadow-[0_0_15px_rgba(0,255,0,0.2)]"
+                  >
+                    <img
+                      src={project.imageUrl}
+                      alt={`${project.name} cover`}
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                  <p className="text-[11px] text-terminal-dim mt-2 text-center">Click to view full-size</p>
+                </div>
+              )}
+
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold text-terminal-text mb-2">{project.name}</h2>
+                  <p className="text-terminal-dim leading-relaxed">{project.description}</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-terminal-dim p-4 rounded">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">TYPE</span>
+                    <span className="text-terminal-text text-sm uppercase">
+                      {project.type?.replace('-', ' ') || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">VERSION</span>
+                    <span className="text-terminal-text text-sm">{project.version}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">STATUS</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.checkoutStatus === 'checked-out'
+                        ? `Checked out by ${project.checkedOutBy?.username || 'unknown'}`
+                        : 'Checked in'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">DOWNLOADS</span>
+                    <span className="text-terminal-text text-sm">{project.downloads}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">OWNER</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.owner?.username || 'unknown'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">CREATED</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.createdDate
+                        ? new Date(project.createdDate).toLocaleDateString()
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                {project.tags?.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm text-terminal-accent">&gt; LANGUAGES</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {project.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => handleTagNavigate(tag)}
+                          className="text-xs border border-terminal-dim text-terminal-text px-2 py-1 rounded hover:border-terminal-accent hover:text-terminal-accent transition-all duration-200"
+                          type="button"
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  const updateProjectState = (updatedProject) => {
+    setProject(updatedProject);
+    setError('');
+  };
+
+  const handleEditToggle = () => setIsEditing((prev) => !prev);
+
+  const handleProjectUpdate = async (formData) => {
     try {
-        const response = await fetch(`/api/projects/${project.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedData),
-        });
-        const data = await response.json();
-        if (data.success) {
-            setProject(prev => ({ ...prev, ...updatedData }));
-            setIsEditing(false);
-        } else {
-            console.error('Error updating project:', data.message);
-        }
-    } catch (error) {
-        console.error('Network error during project update:', error);
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update project.');
+      }
+      updateProjectState(data.project);
+      setIsEditing(false);
+    } catch (updateError) {
+      alert(updateError.message || 'Unable to update project.');
+      throw updateError;
     }
   };
 
   const handleDelete = async () => {
-    if (window.confirm('WARNING: Are you sure you want to delete this project? This action is permanent.')) {
-        try {
-            const response = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
-            const data = await response.json();
-            if (data.success) {
-                alert('Project deleted successfully.');
-                navigate('/home'); 
-            } else {
-                alert('Error deleting project: ' + data.message);
-            }
-        } catch (error) {
-            alert('Network error during project deletion.');
+    if (
+      window.confirm(
+        'WARNING: Are you sure you want to delete this project? This action is permanent.'
+      )
+    ) {
+      try {
+        const response = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (data.success) {
+          navigate('/home');
+        } else {
+          alert(data.message || 'Unable to delete project.');
         }
+      } catch (deleteError) {
+        alert('Network error during project deletion.');
+      }
     }
   };
 
   const handleCheckout = async () => {
     try {
-        const response = await fetch(`/api/projects/${project.id}/checkout`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id }),
-        });
-        const data = await response.json();
-        if (data.success) {
-            alert('Project checked out successfully.');
-            fetchProject(); // Re-fetch to update status
-        } else {
-            alert('Checkout failed: ' + data.message);
-        }
-    } catch (error) {
-        alert('Network error during checkout.');
+      const response = await fetch(`/api/projects/${project.id}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert('Project checked out successfully.');
+      } else {
+        alert(data.message || 'Checkout failed.');
+      }
+    } catch (checkoutError) {
+      alert('Network error during checkout.');
     }
+  };
+
+  const handleCheckinFilesChange = (event) => {
+    setCheckinForm((prev) => ({
+      ...prev,
+      files: Array.from(event.target.files || []),
+    }));
   };
 
   const handleCheckin = async () => {
-    if (!checkoutMessage) {
+    if (!checkinForm.message.trim()) {
       alert('Please provide a check-in message describing your changes.');
       return;
     }
+
+    if (!checkinForm.version.trim()) {
+      alert('Please provide the new project version.');
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append('userId', user.id);
+    payload.append('message', checkinForm.message.trim());
+    payload.append('version', checkinForm.version.trim());
+    checkinForm.files.forEach((file) => payload.append('projectFiles', file));
+
     try {
-        const response = await fetch(`/api/projects/${project.id}/checkin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, message: checkoutMessage }),
+      const response = await fetch(`/api/projects/${project.id}/checkin`, {
+        method: 'POST',
+        body: payload,
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        setCheckinForm({
+          message: '',
+          version: data.project.version || checkinForm.version.trim(),
+          files: [],
         });
-        const data = await response.json();
-        if (data.success) {
-            alert('Project checked in successfully.');
-            setCheckoutMessage('');
-            fetchProject(); // Re-fetch to update status
-            setActiveTab('activity'); // View new activity
-        } else {
-            alert('Check-in failed: ' + data.message);
-        }
-    } catch (error) {
-        alert('Network error during check-in.');
+        setCheckinFileInputKey((prev) => prev + 1);
+        setActiveTab('activity');
+        alert('Project checked in successfully.');
+      } else {
+        alert(data.message || 'Check-in failed.');
+      }
+    } catch (checkinError) {
+      alert('Network error during check-in.');
     }
   };
 
-  if (loading || !project) {
+  const handleDiscussionPost = async (text) => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/discussion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, message: text }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDiscussion((prev) => [data.message, ...(prev || [])]);
+      } else {
+        alert(data.message || 'Unable to post to the discussion board.');
+      }
+    } catch (error) {
+      alert('Network error posting to the discussion board.');
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert('Download recorded. Use the file list to download individual files.');
+      } else {
+        alert(data.message || 'Unable to record download.');
+      }
+    } catch (downloadError) {
+      alert('Network error during download.');
+    }
+  };
+
+  const handleRollback = async (versionId, label) => {
+    if (!canRollback || !versionId) {
+      return;
+    }
+
+    if (!window.confirm(`Rollback project to ${label}?`)) {
+      return;
+    }
+
+    setRollbackError('');
+    setRollbackLoading(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${project.id}/versions/${versionId}/rollback`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert(`Project rolled back to ${label}.`);
+        setActiveTab('history');
+      } else {
+        throw new Error(data.message || 'Rollback failed.');
+      }
+    } catch (rollbackErr) {
+      setRollbackError(rollbackErr.message || 'Unable to rollback to the selected version.');
+    } finally {
+      setRollbackLoading(false);
+    }
+  };
+
+  const handleMessageAdded = (activity) => {
+    setProject((prev) => ({
+      ...prev,
+      activity: [activity, ...(prev?.activity || [])],
+    }));
+  };
+
+  const handleAddMember = async (friendId) => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: user.id,
+          friendId,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert('Member added successfully.');
+      } else {
+        alert(data.message || 'Unable to add member.');
+      }
+    } catch (addError) {
+      alert('Network error while adding member.');
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('Remove this member from the project?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/members/${memberId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requesterId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert('Member removed successfully.');
+      } else {
+        alert(data.message || 'Unable to remove member.');
+      }
+    } catch (removeError) {
+      alert('Network error while removing member.');
+    }
+  };
+
+  const handleTransferOwnership = async (newOwnerId) => {
+    if (!window.confirm('Transfer ownership to this member?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: user.id,
+          newOwnerId,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert('Ownership transferred successfully.');
+      } else {
+        alert(data.message || 'Unable to transfer ownership.');
+      }
+    } catch (transferError) {
+      alert('Network error while transferring ownership.');
+    }
+  };
+
+  const handleTagNavigate = (tag) => {
+    if (!tag) return;
+    navigate(`/search?term=${encodeURIComponent(tag)}&type=tags`);
+  };
+
+  const toggleImageModal = () => setIsImageModalOpen((prev) => !prev);
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-terminal-bg flex items-center justify-center">
-        <Header user={user} onLogout={onLogout} />
-        <div className="text-terminal-text text-lg font-share-tech-mono">
-          Loading project data<span className="cursor animate-blink">_</span>
+      <div className="bg-terminal-bg min-h-screen">
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
+        <div className="flex items-center justify-center mt-32">
+          <div className="text-terminal-text text-lg font-share-tech-mono">
+            Loading project data<span className="cursor animate-blink">_</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="bg-terminal-bg min-h-screen">
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
+        <div className="flex items-center justify-center mt-32">
+          <div className="text-terminal-error text-lg font-share-tech-mono">
+            {error || 'Project not found.'}
+          </div>
         </div>
       </div>
     );
@@ -135,15 +730,21 @@ const ProjectPage = ({ user, onLogout }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
-      
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
+
       <main className="p-5 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-5 items-start">
-          {/* Project Sidebar */}
+        {error && (
+          <div className="mb-4 border border-terminal-error text-terminal-error text-sm p-3 font-fira-code">
+            ERROR: {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5 items-start">
           <aside className="bg-terminal-bg border-2 border-terminal-border rounded-lg p-5 shadow-[0_0_10px_rgba(0,255,0,0.1)] sticky top-20">
             {isEditing && isOwner ? (
               <EditProject
                 project={project}
+                currentUser={user}
                 onSave={handleProjectUpdate}
                 onCancel={handleEditToggle}
               />
@@ -153,89 +754,64 @@ const ProjectPage = ({ user, onLogout }) => {
                 isOwner={isOwner}
                 isMember={isMember}
                 currentUser={user}
+                availableFriends={availableFriends}
                 onEdit={handleEditToggle}
                 onDelete={handleDelete}
                 onCheckout={handleCheckout}
-                onCheckin={handleCheckin}
+                onShowCheckin={() => setActiveTab('activity')}
+                onDownload={handleDownload}
+                onAddMember={handleAddMember}
+                onRemoveMember={handleRemoveMember}
+                onTransferOwnership={handleTransferOwnership}
+                onTagClick={handleTagNavigate}
+                onImageClick={project.imageUrl ? toggleImageModal : undefined}
               />
             )}
           </aside>
-          
-          {/* Project Main Content */}
+
           <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.1)] min-h-[400px] flex flex-col">
             <div className="flex bg-terminal-dim border-b border-terminal-border">
-              {['overview', 'files', 'activity'].map(tab => (
+              {PROJECT_TABS.map((tab) => (
                 <button
                   key={tab}
-                  className={`px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out ${activeTab === tab ? 'bg-terminal-text text-terminal-bg' : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent'}`}
+                  className={projectTabClass(tab)}
                   onClick={() => setActiveTab(tab)}
                 >
                   &gt; {tab.toUpperCase()}
                 </button>
               ))}
             </div>
-            
-            <div className="p-5 flex-1 relative">
-              
-              {/* Overview Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'overview' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <h2 className="text-lg font-bold mb-2 text-terminal-text">{project.name}</h2>
-                <p className="text-terminal-dim mb-6">{project.description}</p>
-                <div className="grid grid-cols-3 gap-5 border border-terminal-dim p-4">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-terminal-dim">VERSION:</span>
-                    <span className="text-base text-terminal-text">{project.version}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-terminal-dim">DOWNLOADS:</span>
-                    <span className="text-base text-terminal-text">{project.downloads}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-terminal-dim">MEMBERS:</span>
-                    <span className="text-base text-terminal-text">{project.members.length}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Files Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'files' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <FilesComponent 
-                  files={project.files} 
-                  canEdit={isMember}
-                  checkoutStatus={project.checkoutStatus}
-                />
-              </div>
-              
-              {/* Activity Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'activity' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <MessagesComponent 
-                  messages={project.activity}
-                  canAddMessage={isMember}
-                />
 
-                {isMember && project.checkoutStatus === 'checked-out' && project.checkedOutBy === user.username && (
-                    <div className="mt-8 p-4 border border-terminal-warning rounded-lg bg-terminal-input-bg">
-                        <h4 className="text-terminal-warning mb-3">&gt; CHECKIN_MESSAGE:</h4>
-                        <textarea
-                            className="terminal-input w-full p-2 text-sm"
-                            rows="2"
-                            value={checkoutMessage}
-                            onChange={(e) => setCheckoutMessage(e.target.value)}
-                            placeholder="Describe your changes before checking in..."
-                        />
-                        <button 
-                            onClick={handleCheckin} 
-                            className="terminal-button mt-3 w-full bg-terminal-accent/20 border-terminal-accent text-terminal-accent"
-                        >
-                            COMMIT & CHECKIN
-                        </button>
-                    </div>
-                )}
-              </div>
-            </div>
+            <div className="p-5 flex-1 relative">{renderActiveTabContent()}</div>
           </div>
         </div>
       </main>
+
+      {isImageModalOpen && project.imageUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 max-w-3xl w-full shadow-[0_0_25px_rgba(0,255,0,0.2)]">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-terminal-accent text-sm font-fira-code">
+                &gt; {project.name.toUpperCase()}_IMAGE
+              </h4>
+              <button
+                type="button"
+                onClick={toggleImageModal}
+                className="terminal-button text-xs px-3 py-1 bg-transparent text-terminal-text border border-terminal-text"
+              >
+                CLOSE
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto">
+              <img
+                src={project.imageUrl}
+                alt={`${project.name} full-size`}
+                className="w-full h-auto rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

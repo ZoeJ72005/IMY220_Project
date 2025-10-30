@@ -1,20 +1,21 @@
-/* Improved user-friendly styles for SplashPage */
+/* Updated styles for SplashPage using the new color variables */
 
 .splash-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  background: var(--terminal-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  padding: 1rem;
 }
 
 .terminal-container {
-  background: #181818;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-  width: 420px;
-  max-width: 95vw;
+  background: var(--terminal-bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--terminal-border-primary);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  width: 450px;
+  max-width: 100%;
   padding: 0;
   overflow: hidden;
   display: flex;
@@ -22,16 +23,17 @@
 }
 
 .terminal-header {
-  background: #222;
-  padding: 12px 18px;
+  background: var(--terminal-bg);
+  padding: 10px 15px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid var(--terminal-border-primary);
 }
 
 .terminal-controls {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .control {
@@ -39,44 +41,43 @@
   height: 12px;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 2px;
 }
-
 .control.red { background: #ff5f56; }
 .control.yellow { background: #ffbd2e; }
 .control.green { background: #27c93f; }
 
 .terminal-title {
-  color: #fff;
+  color: var(--terminal-text-secondary);
   font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 1px;
+  font-size: 0.8rem;
+  font-family: var(--font-primary);
+  text-transform: uppercase;
 }
 
 .terminal-content {
-  background: #181818;
-  padding: 24px 18px 12px 18px;
-  min-height: 220px;
-  color: #e0e0e0;
+  background: var(--terminal-bg);
+  padding: 20px 24px 12px 24px;
+  min-height: 200px;
+  color: var(--terminal-text-primary);
   font-size: 1rem;
 }
 
 .terminal-output {
-  font-family: 'Fira Mono', 'Consolas', monospace;
-  font-size: 1rem;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
   white-space: pre-wrap;
   margin-bottom: 16px;
-  color: #b2ffb2;
+  color: var(--terminal-accent);
+  line-height: 1.6;
 }
 
 .cursor {
   animation: blink 1s steps(1) infinite;
-  color: #fff;
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  background: var(--terminal-accent);
+  color: transparent;
+  display: inline-block;
+  width: 8px;
+  margin-left: 2px;
 }
 
 .auth-section {
@@ -85,77 +86,78 @@
 
 .auth-tabs {
   display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 4px;
+  margin-bottom: -1px;
 }
 
 .tab-button {
-  background: #222;
-  color: #fff;
-  border: none;
-  padding: 8px 24px;
-  border-radius: 8px 8px 0 0;
+  background: var(--terminal-bg);
+  color: var(--terminal-text-secondary);
+  border: 1px solid var(--terminal-border-primary);
+  border-bottom: 1px solid var(--terminal-border-primary);
+  padding: 8px 16px;
+  border-radius: 6px 6px 0 0;
   font-weight: 500;
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   outline: none;
+  margin-bottom: -1px; /* Overlap the container border */
+  position: relative;
+  top: 1px;
 }
 
-.tab-button.active,
-.tab-button:hover {
-  background: #27c93f;
-  color: #181818;
+.tab-button.active {
+  background: var(--terminal-bg-secondary);
+  color: var(--terminal-text-primary);
+  border-bottom-color: var(--terminal-bg-secondary);
+  font-weight: 600;
+}
+
+.tab-button:hover:not(.active) {
+  background: var(--terminal-bg-secondary);
+  color: var(--terminal-text-primary);
 }
 
 .auth-form-container {
-  background: #232526;
-  padding: 18px 12px;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 2px 8px rgba(39,201,63,0.08);
+  background: var(--terminal-bg-secondary);
+  padding: 1.5rem;
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 0 8px 8px 8px;
 }
 
 .terminal-footer {
-  background: #222;
+  background: var(--terminal-bg-secondary);
   padding: 16px 18px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--terminal-border-primary);
   text-align: center;
 }
 
 .brand-info {
-  color: #fff;
+  color: var(--terminal-text-primary);
 }
 
 .brand-name {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 4px;
   letter-spacing: 2px;
+  font-family: var(--font-secondary);
 }
 
 .tagline {
-  font-size: 1rem;
-  color: #27c93f;
+  font-size: 0.85rem;
+  color: var(--terminal-accent);
   margin-bottom: 8px;
 }
 
 .features {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
-  font-size: 0.95rem;
-  color: #b2ffb2;
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
   margin-top: 6px;
-}
-
-@media (max-width: 500px) {
-  .terminal-container {
-    width: 98vw;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .terminal-content, .terminal-header, .terminal-footer {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
 }

@@ -1,0 +1,151 @@
+.edit-project {
+  display: grid;
+  gap: 1.5rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: var(--terminal-bg-secondary);
+}
+
+.edit-project__header {
+  display: grid;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+  padding-bottom: 1rem;
+}
+
+.edit-project__title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.edit-project__cursor {
+  animation: blink 1s infinite;
+}
+
+.edit-project__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+  line-height: 1.6;
+}
+
+.edit-project__alert {
+  border: 1px solid var(--terminal-error);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--terminal-error);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  font-size: 0.8rem;
+}
+
+.edit-project__form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.edit-project__grid {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.edit-project__group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.edit-project__group--textarea {
+  gap: 0.55rem;
+}
+
+.edit-project__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-secondary);
+  font-weight: 600;
+}
+
+.edit-project__input,
+.edit-project__textarea {
+  /* Inherits from .terminal-input */
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.edit-project__input--select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.edit-project__input--file {
+  padding: 0.5rem 0.75rem;
+  background: var(--terminal-bg);
+  font-size: 0.8rem;
+}
+
+.edit-project__textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.edit-project__error {
+  font-size: 0.75rem;
+  color: var(--terminal-error);
+}
+
+.edit-project__preview {
+  margin-top: 0.6rem;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px solid var(--terminal-border-dim);
+  border-radius: 6px;
+  background: var(--terminal-bg);
+}
+
+.edit-project__preview-label {
+  font-size: 0.7rem;
+  color: var(--terminal-text-secondary);
+  text-transform: uppercase;
+}
+
+.edit-project__preview-image {
+  max-height: 150px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--terminal-border-primary);
+}
+
+.edit-project__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--terminal-border-dim);
+}
+
+.edit-project__button {
+  /* Inherits from .terminal-button */
+  min-width: 140px;
+  justify-content: center;
+  font-size: 0.8rem;
+}
+
+.edit-project__button--primary {
+  /* Use .terminal-button--primary */
+}
+
+.edit-project__button--ghost {
+  /* Default .terminal-button style */
+}

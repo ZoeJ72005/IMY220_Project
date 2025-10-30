@@ -1,0 +1,118 @@
+.pending-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: var(--terminal-bg);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.08);
+  font-family: 'Fira Code', monospace;
+  color: var(--terminal-text);
+}
+
+.pending-requests__title {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-accent);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+  padding-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-requests__count {
+  color: var(--terminal-text);
+}
+
+.pending-requests__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pending-requests__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  border-radius: 6px;
+  background: rgba(0, 17, 0, 0.35);
+}
+
+.pending-requests__user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pending-requests__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  object-fit: cover;
+}
+
+.pending-requests__name {
+  font-size: 0.8rem;
+}
+
+.pending-requests__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.pending-requests__button {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.pending-requests__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pending-requests__button--accept {
+  border-color: var(--terminal-accent);
+  color: var(--terminal-accent);
+  background: transparent;
+}
+
+.pending-requests__button--accept:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+.pending-requests__button--decline {
+  border-color: var(--terminal-error);
+  color: var(--terminal-error);
+  background: transparent;
+}
+
+.pending-requests__button--decline:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+}
+
+.pending-requests__error {
+  font-size: 0.7rem;
+  color: var(--terminal-error);
+  border-top: 1px solid rgba(255, 0, 0, 0.2);
+  padding-top: 0.5rem;
+}

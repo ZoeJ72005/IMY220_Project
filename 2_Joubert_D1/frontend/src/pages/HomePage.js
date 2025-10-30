@@ -1,22 +1,54 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Feed from '../components/Feed';
+import PendingRequestsCard from '../components/PendingRequestsCard';
 
 
-const HomePage = ({ user, onLogout }) => {
+const HomePage = ({ user, onLogout, onUserUpdate, theme, onToggleTheme }) => {
   const [feedType, setFeedType] = useState('local'); // 'local' or 'global'
+  const navigate = useNavigate();
+  const feedRef = useRef(null);
+
+  const scrollToFeed = () => {
+    if (feedRef.current) {
+      feedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleNewProject = () => {
+    if (user?.id) {
+      navigate(`/profile/${user.id}?tab=create`);
+    } else {
+      navigate('/profile');
+    }
+  };
+
+  const handleBrowseProjects = () => {
+    setFeedType('global');
+    scrollToFeed();
+  };
+
+  const handleViewProfile = () => {
+    if (user?.id) {
+      navigate(`/profile/${user.id}`);
+    }
+  };
 
   const buttonClass = `terminal-button text-xs px-3 py-2 text-left`;
 
   return (
     <div className="min-h-screen bg-terminal-bg">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       
       <main className="p-5 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
           
           {/* Main Terminal Window (Feed) */}
-          <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,255,0,0.2)]">
+          <div
+            ref={feedRef}
+            className="bg-terminal-bg border-2 border-terminal-border rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,255,0,0.2)]"
+          >
             <div className="bg-terminal-dim p-2.5 px-4 flex items-center border-b border-terminal-border">
               <div className="flex space-x-2 mr-4">
                 <span className="w-3 h-3 rounded-full bg-[#ff5f56]"></span>
@@ -62,17 +94,19 @@ const HomePage = ({ user, onLogout }) => {
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 shadow-[0_0_10px_rgba(0,255,0,0.1)]">
               <h3 className="font-fira-code text-sm text-terminal-accent mb-4 border-b border-terminal-dim pb-2">&gt; QUICK_ACTIONS</h3>
               <div className="flex flex-col space-y-2.5">
-                <button className={buttonClass}>
+                <button className={buttonClass} onClick={handleNewProject}>
                   + NEW_PROJECT
                 </button>
-                <button className={buttonClass}>
+                <button className={buttonClass} onClick={handleBrowseProjects}>
                   BROWSE_PROJECTS
                 </button>
-                <button className={buttonClass}>
+                <button className={buttonClass} onClick={handleViewProfile}>
                   VIEW_PROFILE
                 </button>
               </div>
             </div>
+
+            <PendingRequestsCard user={user} onUserUpdate={onUserUpdate} />
             
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 shadow-[0_0_10px_rgba(0,255,0,0.1)]">
               <h3 className="font-fira-code text-sm text-terminal-accent mb-4 border-b border-terminal-dim pb-2">&gt; SYSTEM_STATUS</h3>

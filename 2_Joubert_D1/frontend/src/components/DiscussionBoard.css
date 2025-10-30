@@ -1,0 +1,141 @@
+.discussion-board {
+  display: grid;
+  gap: 1.5rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+}
+
+.discussion-board__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+}
+
+.discussion-board__title {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.discussion-board__cursor {
+  animation: blink 1s infinite;
+}
+
+.discussion-board__subtitle {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+  line-length: 1.5;
+}
+
+.discussion-board__loading {
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+  text-transform: uppercase;
+}
+
+.discussion-board__empty {
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  background: var(--terminal-bg);
+  font-size: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+  color: var(--terminal-text-secondary);
+}
+
+.discussion-board__timeline {
+  display: grid;
+  gap: 1rem;
+}
+
+.discussion-board__entry {
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  background: var(--terminal-bg);
+}
+
+.discussion-board__entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+}
+
+.discussion-board__author {
+  color: var(--terminal-text-primary);
+  font-weight: 600;
+}
+
+.discussion-board__time {
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+  margin-left: auto;
+}
+
+.discussion-board__message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--terminal-text-primary);
+  white-space: pre-wrap; /* Preserve line breaks */
+}
+
+.discussion-board__form {
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.75rem;
+  background: var(--terminal-bg);
+}
+
+.discussion-board__form-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-secondary);
+  font-weight: 600;
+}
+
+.discussion-board__textarea {
+  /* Inherits from .terminal-input */
+  width: 100%;
+  min-height: 100px;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.discussion-board__submit {
+  /* Inherits from .terminal-button */
+  justify-self: end;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.8rem;
+  /* Use the .terminal-button--primary modifier */
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  color: #000;
+}
+
+.discussion-board__submit:hover:not(:disabled) {
+  background: var(--terminal-accent-hover);
+  border-color: var(--terminal-accent-hover);
+}
+
+.discussion-board__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}

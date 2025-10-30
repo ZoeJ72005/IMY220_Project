@@ -1,0 +1,107 @@
+.signup-form {
+  display: grid;
+  gap: 1.25rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.signup-form__header {
+  display: grid;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.signup-form__title {
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: var(--font-secondary);
+}
+
+.signup-form__cursor {
+  animation: blink 1s infinite;
+  display: none;
+}
+
+.signup-form__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+  line-height: 1.5;
+}
+
+.signup-form__error {
+  border: 1px solid var(--terminal-error);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--terminal-error);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.signup-form__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.signup-form__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.signup-form__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--terminal-text-secondary);
+  cursor: pointer;
+}
+
+.signup-form__input {
+  /* Uses .terminal-input styles from ComponentBase.css */
+  font-size: 0.9rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.signup-form__field-error {
+  font-size: 0.75rem;
+  color: var(--terminal-error);
+}
+
+.signup-form__submit {
+  /* Uses .terminal-button styles */
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  /* Use the primary modifier */
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  color: #000;
+  font-weight: 600;
+}
+.signup-form__submit:hover:not(:disabled) {
+  background: var(--terminal-accent-hover);
+  border-color: var(--terminal-accent-hover);
+}
+.signup-form__submit:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.signup-form__footer {
+  border-top: 1px solid var(--terminal-border-dim);
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+  text-align: center;
+  line-height: 1.5;
+}

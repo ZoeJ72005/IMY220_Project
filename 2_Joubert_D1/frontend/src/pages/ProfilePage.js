@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProfileComponent from '../components/ProfileComponent';
 import EditProfile from '../components/EditProfile';
@@ -7,24 +8,83 @@ import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
 
-const ProfilePage = ({ user, onLogout }) => {
+const ProfilePage = ({ user, onLogout, onUserUpdate, theme, onToggleTheme }) => {
   const { userId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [isFriend, setIsFriend] = useState(false);
+  const [friendStatus, setFriendStatus] = useState('none');
+  const [saveError, setSaveError] = useState('');
 
-  const isOwnProfile = user.id.toString() === userId;
+  const isOwnProfile = user?.id?.toString() === userId;
 
-  const fetchProfile = async () => {
+  const getValidTab = useCallback(
+    (tabValue) => {
+      const allowedTabs = isOwnProfile
+        ? ['profile', 'projects', 'friends', 'create']
+        : ['profile', 'projects', 'friends'];
+      if (tabValue && allowedTabs.includes(tabValue)) {
+        return tabValue;
+      }
+      return 'profile';
+    },
+    [isOwnProfile]
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedTab = params.get('tab');
+    const nextTab = getValidTab(requestedTab);
+    setActiveTab(nextTab);
+  }, [location.search, getValidTab]);
+
+  const computeFriendStatus = useCallback(
+    (viewer, profile) => {
+      if (!viewer?.id || !profile?.id) {
+        return 'none';
+      }
+
+      if (viewer.id.toString() === profile.id.toString()) {
+        return 'self';
+      }
+
+      const viewerFriends = viewer.friends || [];
+      const pending = viewer.pendingFriendRequests || [];
+      const outgoing = viewer.outgoingFriendRequests || [];
+
+      if (viewerFriends.some((friend) => friend.id === profile.id)) {
+        return 'friend';
+      }
+
+      if (pending.some((request) => request.id === profile.id)) {
+        return 'incoming';
+      }
+
+      if (outgoing.some((request) => request.id === profile.id)) {
+        return 'pending';
+      }
+
+      return 'none';
+    },
+    []
+  );
+
+  const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
-        const response = await fetch(`/api/users/${userId}`);
+        const params = new URLSearchParams();
+        if (user?.id) {
+            params.set('viewerId', user.id);
+        }
+        const query = params.toString() ? `?${params.toString()}` : '';
+        const response = await fetch(`/api/users/${userId}${query}`);
         const data = await response.json();
         if (data.success) {
             setProfileUser(data.profile);
-            setIsFriend(user.friends.some(friend => friend.id === data.profile.id));
+            setFriendStatus(computeFriendStatus(user, data.profile));
         } else {
             console.error(data.message);
         }
@@ -33,54 +93,159 @@ const ProfilePage = ({ user, onLogout }) => {
     } finally {
         setLoading(false);
     }
-  };
+  }, [userId, user?.id]);
 
   useEffect(() => {
     fetchProfile();
-  }, [userId, user]);
+  }, [fetchProfile]);
 
-  const handleEditToggle = () => setIsEditing(prev => !prev);
+  useEffect(() => {
+    if (profileUser) {
+      setFriendStatus(computeFriendStatus(user, profileUser));
+    }
+  }, [user, profileUser, computeFriendStatus]);
 
-  const handleProfileUpdate = async (updatedData) => {
+  const handleEditToggle = () => {
+    setSaveError('');
+    setIsEditing(prev => !prev);
+  };
+
+  const handleTabChange = (tab) => {
+    const nextTab = getValidTab(tab);
+    setActiveTab(nextTab);
+
+    const params = new URLSearchParams(location.search);
+    if (nextTab === 'profile') {
+      params.delete('tab');
+    } else {
+      params.set('tab', nextTab);
+    }
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString() ? `?${params.toString()}` : '',
+      },
+      { replace: true }
+    );
+  };
+
+  const handleProfileUpdate = async (updatedPayload, options = {}) => {
+    setSaveError('');
+
+    const targetId = profileUser?.id || user?.id;
+    if (!targetId) {
+      setSaveError('Unable to determine which profile to update.');
+      return;
+    }
+
     try {
-        const response = await fetch(`/api/users/${user.id}`, {
+      const useFormData = updatedPayload instanceof FormData || options.useFormData;
+      const endpoint = useFormData ? `/api/users/${targetId}/profile` : `/api/users/${targetId}`;
+      const requestConfig = useFormData
+        ? {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updatedData),
-        });
-        const data = await response.json();
+            body: updatedPayload,
+          }
+        : {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedPayload),
+          };
 
-        if (data.success) {
-            // Note: Since the backend returns the MongoDB user document which might not be fully populated,
-            // we re-fetch the entire profile to ensure consistency.
-            fetchProfile(); 
-            setIsEditing(false);
-        } else {
-            console.error('Error updating profile:', data.message);
+      const response = await fetch(endpoint, requestConfig);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const viewerUpdate =
+          isOwnProfile && data.profile
+            ? { ...user, ...data.profile }
+            : user;
+
+        setProfileUser(data.profile);
+        setIsEditing(false);
+
+        if (isOwnProfile && data.profile && onUserUpdate && user) {
+          onUserUpdate(viewerUpdate);
         }
+
+        setFriendStatus(computeFriendStatus(viewerUpdate, data.profile));
+      } else {
+        setSaveError(data.message || 'Unable to save profile changes.');
+      }
     } catch (error) {
-        console.error('Network error during profile update:', error);
+      setSaveError('Network error during profile update. Please try again.');
     }
   };
 
-  const handleAddFriend = async () => {
+  const syncFriendData = (updatedUserPayload, updatedProfilePayload) => {
+    if (updatedProfilePayload) {
+      setProfileUser(updatedProfilePayload);
+    }
+
+    if (updatedUserPayload && onUserUpdate) {
+      onUserUpdate(updatedUserPayload);
+    }
+
+    const viewer = updatedUserPayload || user;
+    const profile = updatedProfilePayload || profileUser;
+    if (viewer && profile) {
+      setFriendStatus(computeFriendStatus(viewer, profile));
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
     try {
-      const response = await fetch(`/api/users/${userId}/friends`, {
+      const response = await fetch(`/api/users/${userId}/friend-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentUserId: user.id }),
       });
       const data = await response.json();
       if (data.success) {
-        setIsFriend(true);
-        alert('Friend added successfully.');
+        syncFriendData(data.user, data.profile);
+        alert('Friend request sent.');
       } else {
-        alert('Failed to add friend: ' + data.message);
+        alert('Failed to send request: ' + data.message);
       }
     } catch (error) {
-      alert('Network error adding friend.');
+      alert('Network error sending friend request.');
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    try {
+      const response = await fetch(`/api/users/${user.id}/friend-requests/${profileUser.id}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.success) {
+        syncFriendData(data.user, data.profile);
+        alert('Friend request accepted.');
+      } else {
+        alert('Failed to accept request: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error accepting friend request.');
+    }
+  };
+
+  const handleDeclineFriendRequest = async () => {
+    try {
+      const response = await fetch(`/api/users/${user.id}/friend-requests/${profileUser.id}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.success) {
+        syncFriendData(data.user, data.profile);
+        alert('Friend request declined.');
+      } else {
+        alert('Failed to decline request: ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error declining friend request.');
     }
   };
 
@@ -93,7 +258,7 @@ const ProfilePage = ({ user, onLogout }) => {
       });
       const data = await response.json();
       if (data.success) {
-        setIsFriend(false);
+        syncFriendData(data.user, data.profile);
         alert('Friend removed successfully.');
       } else {
         alert('Failed to remove friend: ' + data.message);
@@ -106,7 +271,7 @@ const ProfilePage = ({ user, onLogout }) => {
   if (loading || !profileUser) {
     return (
       <div className="min-h-screen bg-terminal-bg flex items-center justify-center">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
         <div className="text-terminal-text text-lg font-share-tech-mono">
           Loading user profile...<span className="cursor animate-blink">_</span>
         </div>
@@ -121,7 +286,7 @@ const ProfilePage = ({ user, onLogout }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <main className="p-5 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-5 items-start">
           {/* Sidebar */}
@@ -131,16 +296,18 @@ const ProfilePage = ({ user, onLogout }) => {
                 profile={profileUser}
                 onSave={handleProfileUpdate}
                 onCancel={handleEditToggle}
+                errorMessage={saveError}
               />
             ) : (
               <ProfileComponent
                 profile={profileUser}
                 isOwnProfile={isOwnProfile}
                 onEdit={handleEditToggle}
-                currentUser={user}
-                isFriend={isFriend}
-                onAddFriend={handleAddFriend}
+                friendStatus={friendStatus}
+                onSendFriendRequest={handleSendFriendRequest}
                 onUnfriend={handleUnfriend}
+                onAcceptFriend={handleAcceptFriendRequest}
+                onDeclineFriend={handleDeclineFriendRequest}
               />
             )}
           </aside>
@@ -153,7 +320,7 @@ const ProfilePage = ({ user, onLogout }) => {
                   <button
                     key={tab}
                     className={tabClass(tab)}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabChange(tab)}
                   >
                     &gt; {tab.toUpperCase()}
                   </button>
@@ -162,33 +329,61 @@ const ProfilePage = ({ user, onLogout }) => {
             </div>
 
             <div className="p-5 flex-1 relative">
-              {/* Profile/Activity Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'profile' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <h3 className="text-sm font-bold text-terminal-accent mb-4">RECENT_ACTIVITY</h3>
-                <div className="flex flex-col gap-3">
-                  {profileUser.projects.slice(0, 3).map(p => (
-                    <div key={p.id} className="flex gap-4 p-2.5 bg-[rgba(0,17,0,0.3)] border border-terminal-dim rounded font-fira-code text-xs">
-                      <span className="text-terminal-dim min-w-[80px]">{p.lastActivity}</span>
-                      <span className="text-terminal-text">{p.name}</span>
-                    </div>
-                  ))}
+              {activeTab === 'profile' && (
+                <div className="animate-fade-in">
+                  <h3 className="text-sm font-bold text-terminal-accent mb-4">RECENT_ACTIVITY</h3>
+                  <div className="flex flex-col gap-3">
+                    {profileUser.projects?.slice(0, 3).map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex gap-4 p-2.5 bg-[rgba(0,17,0,0.3)] border border-terminal-dim rounded font-fira-code text-xs"
+                      >
+                        <span className="text-terminal-dim min-w-[80px]">{p.lastActivity}</span>
+                        <span className="text-terminal-text">{p.name}</span>
+                      </div>
+                    ))}
+                    {(!profileUser.projects || profileUser.projects.length === 0) && (
+                      <div className="text-terminal-dim text-xs font-fira-code">
+                        No recent project activity recorded.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Projects Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'projects' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
-              </div>
+              {activeTab === 'projects' && (
+                <div key="projects" className="animate-fade-in">
+                  {profileUser.relation === 'restricted' ? (
+                    <div className="text-terminal-dim text-xs font-fira-code">
+                      Projects are private until you connect with this user.
+                    </div>
+                  ) : (
+                    <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
+                  )}
+                </div>
+              )}
 
-              {/* Friends Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'friends' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
-              </div>
+              {activeTab === 'friends' && (
+                <div key="friends" className="animate-fade-in">
+                  {profileUser.relation === 'restricted' ? (
+                    <div className="text-terminal-dim text-xs font-fira-code">
+                      Add this user to view their network.
+                    </div>
+                  ) : (
+                    <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
+                  )}
+                </div>
+              )}
 
-              {/* Create Project Tab */}
-              {isOwnProfile && (
-                <div className={`transition-opacity duration-250 ${activeTab === 'create' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                  <CreateProject user={user} onProjectCreated={() => setActiveTab('projects')} />
+              {activeTab === 'create' && isOwnProfile && (
+                <div key="create" className="animate-fade-in">
+                  <CreateProject
+                    user={user}
+                    onProjectCreated={() => {
+                      handleTabChange('projects');
+                      fetchProfile();
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -200,3 +395,4 @@ const ProfilePage = ({ user, onLogout }) => {
 };
 
 export default ProfilePage;
+

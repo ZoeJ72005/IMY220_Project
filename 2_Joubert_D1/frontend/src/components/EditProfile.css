@@ -1,0 +1,193 @@
+.edit-profile {
+  display: grid;
+  gap: 1.5rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: var(--terminal-bg-secondary);
+}
+
+.edit-profile__header {
+  display: grid;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+  padding-bottom: 1rem;
+}
+
+.edit-profile__title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.edit-profile__cursor {
+  animation: blink 1s infinite;
+}
+
+.edit-profile__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+  line-height: 1.6;
+}
+
+.edit-profile__form {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.edit-profile__group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.edit-profile__group--image {
+  gap: 0.75rem;
+}
+
+.edit-profile__group--textarea {
+  gap: 0.5rem;
+}
+
+.edit-profile__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-profile__input,
+.edit-profile__textarea {
+  /* Inherits from .terminal-input */
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.edit-profile__textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.edit-profile__hint {
+  font-size: 0.7rem;
+  color: var(--terminal-text-secondary);
+  text-align: right;
+}
+
+.edit-profile__group--image .edit-profile__hint {
+  text-align: center;
+}
+
+.edit-profile__error {
+  font-size: 0.75rem;
+  color: var(--terminal-error);
+}
+
+.edit-profile__error--global {
+  margin-top: -0.5rem;
+  text-align: right;
+  color: var(--terminal-error);
+}
+
+.edit-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--terminal-border-dim);
+}
+
+.edit-profile__button {
+  /* Inherits from .terminal-button */
+  padding: 0.6rem 1.2rem;
+  font-size: 0.75rem;
+}
+
+.edit-profile__button--primary {
+  /* Use .terminal-button--primary */
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  color: #000;
+}
+.edit-profile__button--primary:hover {
+  background: var(--terminal-accent-hover);
+  border-color: var(--terminal-accent-hover);
+}
+
+.edit-profile__button--ghost {
+  /* This is the default .terminal-button style */
+}
+
+.edit-profile__dropzone {
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.01);
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.edit-profile__dropzone--active {
+  border-color: var(--terminal-accent);
+  background: rgba(var(--terminal-accent-rgb), 0.08);
+}
+
+.edit-profile__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.edit-profile__dropzone-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--terminal-border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-profile__preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-profile__dropzone-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-profile__button--sm {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.7rem;
+}
+
+.edit-profile__button--danger {
+  border-color: var(--terminal-error);
+  color: var(--terminal-error);
+  background: transparent;
+}
+
+.edit-profile__button--danger:hover {
+  background: rgba(248, 81, 73, 0.15);
+}

@@ -1,0 +1,105 @@
+.feed-board {
+  display: grid;
+  gap: 1.5rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+}
+
+.feed-board__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  height: 13rem;
+  font-size: 0.9rem;
+  color: var(--terminal-text-secondary);
+  font-family: var(--font-primary);
+}
+
+.feed-board__cursor {
+  animation: blink 1s infinite;
+}
+
+.feed-board__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--terminal-border-primary);
+}
+
+.feed-board__summary {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.feed-board__title {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.feed-board__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+  line-height: 1.5;
+}
+
+.feed-board__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.feed-board__count {
+  font-size: 0.8rem;
+  color: var(--terminal-text-secondary);
+}
+
+.feed-board__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--terminal-text-secondary);
+}
+
+.feed-board__select {
+  /* Inherits from .terminal-input */
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  color: var(--terminal-text-primary);
+  background: var(--terminal-bg-secondary);
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feed-board__select:focus {
+  outline: none;
+  border-color: var(--terminal-accent);
+}
+
+.feed-board__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.2rem;
+}
+
+.feed-board__empty {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 8px;
+  padding: 2.2rem;
+  text-align: center;
+  background: var(--terminal-bg);
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+}

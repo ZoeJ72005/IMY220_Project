@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
+import './LoginForm.css';
 
 const LoginForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -85,79 +86,76 @@ const LoginForm = ({ onLogin }) => {
   };
 
   return (
-    <div className="font-fira-code space-y-4">
-      <h3 className="text-lg text-terminal-accent font-bold">
-        &gt; ACCESS TERMINAL_
-        <span className="cursor animate-blink">_</span>
-      </h3>
-      
-      {errors.general && (
-        <div className="text-terminal-error text-xs p-2 border border-terminal-error">
-          ERROR: {errors.general}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+    <section className="login-form" aria-labelledby="login-form-title">
+      <header className="login-form__header">
+        <h3 id="login-form-title" className="login-form__title">
+          &gt; Access Terminal<span className="login-form__cursor">_</span>
+        </h3>
+        <p className="login-form__subtitle">
+          Enter your credentials to continue working on your projects.
+        </p>
+      </header>
+
+      {errors.general && <div className="login-form__error">Error: {errors.general}</div>}
+
+      <form onSubmit={handleSubmit} className="login-form__body" noValidate>
+        <div className="login-form__field">
+          <label
+            className="login-form__label"
+            htmlFor="login-email"
             onClick={() => handleLabelClick('login-email')}
           >
-            &gt; EMAIL_ADDRESS:
+            Email address
           </label>
           <input
             type="email"
             id="login-email"
             name="email"
-            className="form-input terminal-input"
+            className="login-form__input"
             value={formData.email}
             onChange={handleChange}
             placeholder="user@terminal.dev"
+            autoComplete="email"
             required
           />
-          {errors.email && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.email}</div>
-          )}
+          {errors.email && <div className="login-form__field-error">{errors.email}</div>}
         </div>
 
-        {/* Password */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+        <div className="login-form__field">
+          <label
+            className="login-form__label"
+            htmlFor="login-password"
             onClick={() => handleLabelClick('login-password')}
           >
-            &gt; PASSWORD:
+            Password
           </label>
           <input
             type="password"
             id="login-password"
             name="password"
-            className="form-input terminal-input"
+            className="login-form__input"
             value={formData.password}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
+            autoComplete="current-password"
             required
           />
-          {errors.password && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.password}</div>
-          )}
+          {errors.password && <div className="login-form__field-error">{errors.password}</div>}
         </div>
 
-        <button
-          type="submit"
-          className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-text border border-terminal-text w-full mt-6"
-          disabled={isLoading}
-        >
-          {isLoading ? 'ACCESSING...' : '&gt; LOGIN'}
+        <button type="submit" className="login-form__submit" disabled={isLoading}>
+          {isLoading ? 'Accessing...' : 'Log In'}
         </button>
       </form>
-      
-      <div className="text-terminal-dim text-xs text-center pt-2 border-t border-terminal-dim/50">
-        <p> </p>
-      </div>
-    </div>
+
+      <footer className="login-form__footer">
+        <p>Forgot your password? Contact an administrator to reset access.</p>
+      </footer>
+    </section>
   );
 };
 
 export default LoginForm;
+
+
+

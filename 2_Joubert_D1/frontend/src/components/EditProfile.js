@@ -1,15 +1,55 @@
-import React, { useState } from 'react';
-// No external CSS import needed
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import './EditProfile.css';
+import { resolveProfileImage } from '../utils/avatar';
 
-const EditProfile = ({ profile, onSave, onCancel }) => {
+const IMAGE_MAX_SIZE_MB = 5;
+const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
+
+const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
   const [formData, setFormData] = useState({
     fullName: profile.fullName || '',
     bio: profile.bio || '',
     location: profile.location || '',
     company: profile.company || '',
-    website: profile.website || ''
+    website: profile.website || '',
   });
   const [errors, setErrors] = useState({});
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(profile.profileImage || '');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setFormData({
+      fullName: profile.fullName || '',
+      bio: profile.bio || '',
+      location: profile.location || '',
+      company: profile.company || '',
+      website: profile.website || '',
+    });
+    setImagePreview(profile.profileImage || '');
+    setImageFile(null);
+  }, [
+    profile.fullName,
+    profile.bio,
+    profile.location,
+    profile.company,
+    profile.website,
+    profile.profileImage,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const displayPreview = useMemo(
+    () => imagePreview || resolveProfileImage(profile.profileImage, profile.id || profile.username, 160),
+    [imagePreview, profile.profileImage, profile.id, profile.username]
+  );
 
   const validateForm = () => {
     const newErrors = {};
@@ -30,169 +70,292 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: '',
       }));
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      onSave(formData);
+  const handleSelectedImage = (file) => {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({ ...prev, profileImage: 'Please upload a valid image file' }));
+      return;
+    }
+
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        profileImage: `Image must be smaller than ${IMAGE_MAX_SIZE_MB}MB.`,
+      }));
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, profileImage: '' }));
+
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleSelectedImage(file);
     }
   };
 
-  const handleLabelClick = (inputName) => {
-    const input = document.getElementById(inputName);
-    if (input) {
-      input.focus();
+  const handleDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      handleSelectedImage(file);
     }
   };
-  
-  const buttonClass = (colorVar) => `
-    terminal-button text-sm px-4 py-2 bg-transparent text-[${colorVar}] border-[${colorVar}] 
-    hover:bg-[rgba(0,255,0,0.1)] w-full sm:w-auto
-  `;
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleResetImage = () => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    setImagePreview(profile.profileImage || '');
+    setErrors((prev) => ({ ...prev, profileImage: '' }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append('fullName', formData.fullName.trim());
+    payload.append('bio', formData.bio.trim());
+    payload.append('location', formData.location.trim());
+    payload.append('company', formData.company.trim());
+    payload.append('website', formData.website.trim());
+
+    if (imageFile) {
+      payload.append('profileImage', imageFile);
+    }
+
+    onSave(payload, { useFormData: true });
+  };
+
+  const focusInput = (targetId) => {
+    const input = document.getElementById(targetId);
+    input?.focus();
+  };
+
+  const handleSelectButtonClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
-    <div className="font-fira-code">
-      <h3 className="text-lg text-terminal-text font-bold mb-4">
-        &gt; EDIT_PROFILE
-        <span className="cursor animate-blink">_</span>
-      </h3>
+    <section className="edit-profile" aria-labelledby="edit-profile-title">
+      <header className="edit-profile__header">
+        <h3 id="edit-profile-title" className="edit-profile__title">
+          &gt; Edit Profile<span className="edit-profile__cursor">_</span>
+        </h3>
+        <p className="edit-profile__subtitle">
+          Refine the information that appears on your public developer profile.
+        </p>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        
-        {/* Full Name */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            onClick={() => handleLabelClick('edit-fullname')}
+      <form onSubmit={handleSubmit} className="edit-profile__form" noValidate>
+        <div className="edit-profile__group edit-profile__group--image">
+          <label className="edit-profile__label" htmlFor="edit-profile-image">
+            Profile image
+          </label>
+          <div
+            className={`edit-profile__dropzone ${isDragging ? 'edit-profile__dropzone--active' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
-            FULL_NAME:
+            <input
+              id="edit-profile-image"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="edit-profile__file-input"
+              onChange={handleImageChange}
+            />
+            <div className="edit-profile__dropzone-preview">
+              <img src={displayPreview} alt="Profile preview" className="edit-profile__preview-image" />
+            </div>
+            <div className="edit-profile__dropzone-actions">
+              <button
+                type="button"
+                onClick={handleSelectButtonClick}
+                className="edit-profile__button edit-profile__button--ghost edit-profile__button--sm"
+              >
+                Choose Image
+              </button>
+              {imageFile && (
+                <button
+                  type="button"
+                  onClick={handleResetImage}
+                  className="edit-profile__button edit-profile__button--danger edit-profile__button--sm"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <p className="edit-profile__hint">Drag &amp; drop or choose a file (max {IMAGE_MAX_SIZE_MB}MB).</p>
+          </div>
+          {errors.profileImage && <div className="edit-profile__error">{errors.profileImage}</div>}
+        </div>
+
+        <div className="edit-profile__group">
+          <label
+            className="edit-profile__label"
+            htmlFor="edit-fullname"
+            onClick={() => focusInput('edit-fullname')}
+          >
+            Full name
           </label>
           <input
             type="text"
             id="edit-fullname"
             name="fullName"
-            className="form-input terminal-input"
+            className="edit-profile__input"
             value={formData.fullName}
             onChange={handleChange}
             placeholder="Your full name"
-            maxLength="50"
+            maxLength={50}
           />
-          {errors.fullName && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.fullName}</div>
-          )}
+          {errors.fullName && <div className="edit-profile__error">{errors.fullName}</div>}
         </div>
 
-        {/* Bio */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            onClick={() => handleLabelClick('edit-bio')}
+        <div className="edit-profile__group edit-profile__group--textarea">
+          <label
+            className="edit-profile__label"
+            htmlFor="edit-bio"
+            onClick={() => focusInput('edit-bio')}
           >
-            BIO:
+            Bio
           </label>
           <textarea
             id="edit-bio"
             name="bio"
-            className="form-input terminal-input"
+            className="edit-profile__textarea"
             value={formData.bio}
             onChange={handleChange}
             placeholder="Tell us about yourself..."
-            maxLength="200"
-            rows="3"
+            maxLength={200}
+            rows={3}
           />
-          <div className="text-terminal-dim text-xs text-right">
-            {formData.bio.length}/200
-          </div>
-          {errors.bio && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.bio}</div>
-          )}
+          <div className="edit-profile__hint">{formData.bio.length}/200 characters</div>
+          {errors.bio && <div className="edit-profile__error">{errors.bio}</div>}
         </div>
 
-        {/* Location */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            onClick={() => handleLabelClick('edit-location')}
+        <div className="edit-profile__group">
+          <label
+            className="edit-profile__label"
+            htmlFor="edit-location"
+            onClick={() => focusInput('edit-location')}
           >
-            LOCATION:
+            Location
           </label>
           <input
             type="text"
             id="edit-location"
             name="location"
-            className="form-input terminal-input"
+            className="edit-profile__input"
             value={formData.location}
             onChange={handleChange}
             placeholder="Your location"
           />
         </div>
 
-        {/* Company */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            onClick={() => handleLabelClick('edit-company')}
+        <div className="edit-profile__group">
+          <label
+            className="edit-profile__label"
+            htmlFor="edit-company"
+            onClick={() => focusInput('edit-company')}
           >
-            COMPANY:
+            Company
           </label>
           <input
             type="text"
             id="edit-company"
             name="company"
-            className="form-input terminal-input"
+            className="edit-profile__input"
             value={formData.company}
             onChange={handleChange}
             placeholder="Your company"
           />
         </div>
 
-        {/* Website */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
-            onClick={() => handleLabelClick('edit-website')}
+        <div className="edit-profile__group">
+          <label
+            className="edit-profile__label"
+            htmlFor="edit-website"
+            onClick={() => focusInput('edit-website')}
           >
-            WEBSITE:
+            Website
           </label>
           <input
             type="url"
             id="edit-website"
             name="website"
-            className="form-input terminal-input"
+            className="edit-profile__input"
             value={formData.website}
             onChange={handleChange}
             placeholder="https://your-website.com"
           />
-          {errors.website && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.website}</div>
-          )}
+          {errors.website && <div className="edit-profile__error">{errors.website}</div>}
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
-          <button type="submit" className={`${buttonClass('var(--terminal-accent)')}`}>
-            SAVE_CHANGES
+        <div className="edit-profile__actions">
+          <button type="submit" className="edit-profile__button edit-profile__button--primary">
+            Save Changes
           </button>
-          <button type="button" onClick={onCancel} className={`${buttonClass('var(--terminal-text)')}`}>
-            CANCEL
+          <button
+            type="button"
+            onClick={onCancel}
+            className="edit-profile__button edit-profile__button--ghost"
+          >
+            Cancel
           </button>
         </div>
+        {errorMessage && (
+          <div className="edit-profile__error edit-profile__error--global">
+            {errorMessage}
+          </div>
+        )}
       </form>
-    </div>
+    </section>
   );
 };
 

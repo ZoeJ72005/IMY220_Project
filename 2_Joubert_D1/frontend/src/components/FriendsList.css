@@ -1,0 +1,114 @@
+.friends-list {
+  display: grid;
+  gap: 1.5rem;
+  font-family: var(--font-primary);
+  color: var(--terminal-text-primary);
+}
+
+.friends-list__header {
+  display: grid;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--terminal-border-dim);
+}
+
+.friends-list__title {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--terminal-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.friends-list__cursor {
+  animation: blink 1s infinite;
+}
+
+.friends-list__subtitle {
+  font-size: 0.85rem;
+  color: var(--terminal-text-secondary);
+}
+
+.friends-list__empty {
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  background: var(--terminal-bg);
+  font-size: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+  color: var(--terminal-text-secondary);
+}
+
+.friends-list__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.friends-list__card {
+  position: relative;
+  border: 1px solid var(--terminal-border-primary);
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: var(--terminal-bg);
+  display: grid;
+  gap: 0.75rem;
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.friends-list__card:hover {
+  transform: translateY(-3px);
+  border-color: var(--terminal-text-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.friends-list__avatar-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.friends-list__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--terminal-border-primary);
+  background: var(--terminal-bg-secondary);
+}
+
+.friends-list__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.friends-list__link {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.18s ease;
+}
+
+.friends-list__link:hover {
+  color: var(--terminal-accent);
+}
+
+.friends-list__meta {
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+}
+
+.friends-list__action {
+  /* Inherits from .terminal-button */
+  justify-self: center;
+  margin-top: 0.25rem;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.7rem;
+  /* Use .terminal-button--primary */
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  color: #000;
+}

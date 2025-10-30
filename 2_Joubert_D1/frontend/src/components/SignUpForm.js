@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
+import './SignUpForm.css';
 
 const SignUpForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -107,125 +108,122 @@ const SignUpForm = ({ onLogin }) => {
   };
 
   return (
-    <div className="font-fira-code space-y-4">
-      <h3 className="text-lg text-terminal-accent font-bold">
-        &gt; CREATE_NEW_USER
-        <span className="cursor animate-blink">_</span>
-      </h3>
-      
-      {errors.general && (
-        <div className="text-terminal-error text-xs p-2 border border-terminal-error">
-          ERROR: {errors.general}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Username */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+    <section className="signup-form" aria-labelledby="signup-form-title">
+      <header className="signup-form__header">
+        <h3 id="signup-form-title" className="signup-form__title">
+          &gt; Create New User<span className="signup-form__cursor">_</span>
+        </h3>
+        <p className="signup-form__subtitle">
+          Spin up your developer profile and start collaborating in the terminal.
+        </p>
+      </header>
+
+      {errors.general && <div className="signup-form__error">Error: {errors.general}</div>}
+
+      <form onSubmit={handleSubmit} className="signup-form__body" noValidate>
+        <div className="signup-form__field">
+          <label
+            className="signup-form__label"
+            htmlFor="signup-username"
             onClick={() => handleLabelClick('signup-username')}
           >
-            &gt; USERNAME:
+            Username
           </label>
           <input
             type="text"
             id="signup-username"
             name="username"
-            className="form-input terminal-input"
+            className="signup-form__input"
             value={formData.username}
             onChange={handleChange}
             placeholder="terminal_user"
+            autoComplete="username"
             required
           />
-          {errors.username && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.username}</div>
-          )}
+          {errors.username && <div className="signup-form__field-error">{errors.username}</div>}
         </div>
 
-        {/* Email */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+        <div className="signup-form__field">
+          <label
+            className="signup-form__label"
+            htmlFor="signup-email"
             onClick={() => handleLabelClick('signup-email')}
           >
-            &gt; EMAIL_ADDRESS:
+            Email address
           </label>
           <input
             type="email"
             id="signup-email"
             name="email"
-            className="form-input terminal-input"
+            className="signup-form__input"
             value={formData.email}
             onChange={handleChange}
             placeholder="user@terminal.dev"
+            autoComplete="email"
             required
           />
-          {errors.email && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.email}</div>
-          )}
+          {errors.email && <div className="signup-form__field-error">{errors.email}</div>}
         </div>
 
-        {/* Password */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+        <div className="signup-form__field">
+          <label
+            className="signup-form__label"
+            htmlFor="signup-password"
             onClick={() => handleLabelClick('signup-password')}
           >
-            &gt; PASSWORD:
+            Password
           </label>
           <input
             type="password"
             id="signup-password"
             name="password"
-            className="form-input terminal-input"
+            className="signup-form__input"
             value={formData.password}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
+            autoComplete="new-password"
             required
           />
-          {errors.password && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.password}</div>
-          )}
+          {errors.password && <div className="signup-form__field-error">{errors.password}</div>}
         </div>
 
-        {/* Confirm Password */}
-        <div className="form-group space-y-1">
-          <label 
-            className="form-label text-terminal-text text-sm cursor-pointer"
+        <div className="signup-form__field">
+          <label
+            className="signup-form__label"
+            htmlFor="signup-confirm-password"
             onClick={() => handleLabelClick('signup-confirm-password')}
           >
-            &gt; CONFIRM_PASSWORD:
+            Confirm password
           </label>
           <input
             type="password"
             id="signup-confirm-password"
             name="confirmPassword"
-            className="form-input terminal-input"
+            className="signup-form__input"
             value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="••••••••"
+            placeholder="********"
+            autoComplete="new-password"
             required
           />
           {errors.confirmPassword && (
-            <div className="text-terminal-error text-xs">ERROR: {errors.confirmPassword}</div>
+            <div className="signup-form__field-error">{errors.confirmPassword}</div>
           )}
         </div>
 
-        <button
-          type="submit"
-          className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full mt-6"
-          disabled={isLoading}
-        >
-          {isLoading ? 'CREATING_USER...' : '&gt; REGISTER'}
+        <button type="submit" className="signup-form__submit" disabled={isLoading}>
+          {isLoading ? 'Creating user...' : 'Register'}
         </button>
       </form>
-      
-      <div className="text-terminal-dim text-xs text-center pt-2 border-t border-terminal-dim/50">
-        <p>Join the Terminal/VCS community</p>
-      </div>
-    </div>
+
+      <footer className="signup-form__footer">
+        <p>Join the terminal community and start sharing your projects.</p>
+      </footer>
+    </section>
   );
 };
 
 export default SignUpForm;
+
+
+

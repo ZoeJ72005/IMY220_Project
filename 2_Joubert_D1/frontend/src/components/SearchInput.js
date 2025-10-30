@@ -1,100 +1,226 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+﻿import React, { useEffect, useState, useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import './SearchInput.css';
 
-const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
+const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('projects');
   const [searchResults, setSearchResults] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-        await fetchSearch(searchTerm.trim(), searchType);
-    } else {
-        setSearchResults([]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const termFromUrl = params.get('term');
+    const typeFromUrl = params.get('type');
+
+    if (termFromUrl !== null) {
+      setSearchTerm(termFromUrl);
     }
+    if (typeFromUrl && ['projects', 'users', 'tags', 'activity'].includes(typeFromUrl)) {
+      setSearchType(typeFromUrl);
+    } else if (!typeFromUrl) {
+      setSearchType('projects');
+    }
+
+    setSearchResults([]);
+    setSuggestions([]);
+    setSuggestError('');
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSuggestions([]);
+      setIsSuggesting(false);
+      setSuggestError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setIsSuggesting(true);
+      setSuggestError('');
+      try {
+        const params = new URLSearchParams({
+          term: searchTerm.trim(),
+          types: searchType,
+        });
+        const response = await fetch(`/api/search/suggest?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setSuggestions(data.suggestions || []);
+        } else {
+          setSuggestions([]);
+          setSuggestError(data.message || 'Unable to load suggestions.');
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setSuggestions([]);
+          setSuggestError('Network error while loading suggestions.');
+        }
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 220);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [searchTerm, searchType]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const trimmedTerm = searchTerm.trim();
+    if (onSearch) {
+      await fetchSearch(trimmedTerm, searchType);
+      onSearch(trimmedTerm, searchType);
+    } else {
+      setSearchResults([]);
+      navigate(
+        `/search?term=${encodeURIComponent(trimmedTerm)}&type=${encodeURIComponent(searchType)}`
+      );
+    }
+    setSuggestions([]);
   };
 
   const fetchSearch = async (term, type) => {
     try {
-        // Assuming onSearch is a function passed down to handle navigation/state updates
-        // For D2 completion, we'll implement the fetch here to get results
-        const response = await fetch(`/api/search?term=${term}&type=${type}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            setSearchResults(data.results);
-        } else {
-            console.error('Search failed:', data.message);
-            setSearchResults([]);
-        }
-    } catch (error) {
-        console.error('Network error during search:', error);
+      const response = await fetch(
+        `/api/search?term=${encodeURIComponent(term)}&type=${encodeURIComponent(type)}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setSearchResults(data.results);
+      } else {
+        console.error('Search failed:', data.message);
         setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Network error during search:', error);
+      setSearchResults([]);
     }
   };
 
-  const handleChange = (e) => {
-    setSearchTerm(e.target.value);
-    // Optional: debounce search input if performance is an issue
-  };
-  
-  const handleSuggestionClick = (term, type) => {
-      fetchSearch(term, type);
-      setSearchTerm(term);
+  const handleChange = (event) => {
+    setSearchTerm(event.target.value);
   };
 
-  const buttonClass = `terminal-button text-[11px] px-3 py-1.5 bg-transparent text-terminal-text border border-terminal-text cursor-pointer transition-all duration-300 hover:bg-terminal-button-hover hover:shadow-[0_0_10px_var(--terminal-text)]`;
+  const activeList = useMemo(() => {
+    if (suggestions.length > 0) {
+      return suggestions;
+    }
+    return searchResults;
+  }, [suggestions, searchResults]);
 
   return (
-    <div className="relative w-full font-fira-code">
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 items-center">
-        
-        {/* Search Type Selector */}
-        <div className="w-full sm:min-w-[120px] sm:w-auto">
-          <select 
-            className="terminal-input text-[11px] px-2 py-1.5 w-full bg-terminal-input-bg border border-terminal-text text-terminal-text"
+    <div className="search-input">
+      <form onSubmit={handleSubmit} className="search-input__form">
+        <div className="search-input__type">
+          <label className="search-input__label" htmlFor="global-search-type">
+            Search scope
+          </label>
+          <select
+            id="global-search-type"
+            className="search-input__select"
             value={searchType}
-            onChange={(e) => setSearchType(e.target.value)}
+            onChange={(event) => setSearchType(event.target.value)}
           >
-            <option value="projects">PROJECTS</option>
-            <option value="users">USERS</option>
-            <option value="tags">TAGS</option>
+            <option value="projects">Projects</option>
+            <option value="users">Users</option>
+            <option value="tags">Tags</option>
+            <option value="activity">Check-ins</option>
           </select>
         </div>
-        
-        {/* Input and Button */}
-        <div className="flex flex-1 w-full gap-2">
+
+        <div className="search-input__controls">
+          <label className="search-input__label" htmlFor="global-search-input">
+            Search term
+          </label>
           <input
+            id="global-search-input"
             type="text"
-            className="terminal-input flex-1 text-sm px-2.5 py-1.5 bg-terminal-input-bg border border-terminal-text text-terminal-text"
+            className="search-input__field"
             value={searchTerm}
             onChange={handleChange}
             placeholder={placeholder}
+            autoComplete="off"
           />
-          <button type="submit" className={buttonClass}>
-            SEARCH
+          <button type="submit" className="search-input__button">
+            Search
           </button>
         </div>
       </form>
-      
-      {/* Search Results / Suggestions */}
-      {searchResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 bg-terminal-bg border border-terminal-border border-t-0 rounded-b-lg shadow-[0_5px_15px_rgba(0,255,0,0.2)] z-10 mt-0.5">
-          <div className="p-3 text-[10px] text-terminal-accent bg-terminal-input-bg border-b border-terminal-dim">
-            &gt; {searchResults.length} RESULTS FOUND:
+
+      {isSuggesting && (
+        <div className="search-input__suggestion-status">&gt; Fetching suggestions...</div>
+      )}
+
+      {suggestError && (
+        <div className="search-input__suggestion-error">ERROR: {suggestError}</div>
+      )}
+
+      {activeList.length > 0 && (
+        <div className="search-input__results" role="listbox">
+          <div className="search-input__results-header">
+            &gt; {activeList.length}{' '}
+            {suggestions.length > 0 ? 'suggestions' : 'results'} found
           </div>
-          <div className="py-1.5">
-            {searchResults.map(result => (
-                <Link 
-                    key={result.id} 
-                    to={`/${result.type === 'users' ? 'profile' : 'project'}/${result.id}`}
-                    className="w-full p-2.5 block no-underline text-terminal-text text-[11px] text-left transition-colors duration-300 hover:bg-terminal-button-hover hover:text-terminal-accent"
+          <div className="search-input__results-body">
+            {activeList.map((result) => {
+              const isUser = result.type === 'users';
+              const isActivity = result.type === 'activity';
+              const linkTarget = isUser
+                ? `/profile/${result.id}`
+                : isActivity
+                ? result.projectId
+                  ? `/project/${result.projectId}`
+                  : `/search?term=${encodeURIComponent(searchTerm)}&type=projects`
+                : `/project/${result.id}`;
+
+              return (
+                <Link
+                  key={result.id}
+                  to={linkTarget}
+                  className="search-input__result"
+                  role="option"
                 >
-                    <span className="font-bold">{result.name}</span> 
-                    <span className="text-terminal-dim ml-2">({result.type.toUpperCase()})</span>
+                  <span className="search-input__result-name">{result.name}</span>
+                  <span className="search-input__result-type">
+                    ({result.type.toUpperCase()})
+                  </span>
+                  {result.description && (
+                    <span className="search-input__result-description">
+                      {result.description.length > 80
+                        ? `${result.description.slice(0, 80)}...`
+                        : result.description}
+                    </span>
+                  )}
+                  {isActivity && result.user && (
+                    <span className="search-input__result-meta">
+                      by {result.user.username}
+                      {result.time && ` - ${result.time}`}
+                    </span>
+                  )}
+                  {result.score !== undefined && (
+                    <span className="search-input__result-score">
+                      relevance {(result.score * 100).toFixed(0)}%
+                    </span>
+                  )}
                 </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -103,3 +229,6 @@ const SearchInput = ({ onSearch, placeholder = "search_terminal..." }) => {
 };
 
 export default SearchInput;
+
+
+
