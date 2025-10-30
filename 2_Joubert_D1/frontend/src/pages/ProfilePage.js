@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProfileComponent from '../components/ProfileComponent';
 import EditProfile from '../components/EditProfile';
@@ -10,6 +10,8 @@ import CreateProject from '../components/CreateProject';
 
 const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const { userId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
@@ -18,6 +20,26 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const [saveError, setSaveError] = useState('');
 
   const isOwnProfile = user?.id?.toString() === userId;
+
+  const getValidTab = useCallback(
+    (tabValue) => {
+      const allowedTabs = isOwnProfile
+        ? ['profile', 'projects', 'friends', 'create']
+        : ['profile', 'projects', 'friends'];
+      if (tabValue && allowedTabs.includes(tabValue)) {
+        return tabValue;
+      }
+      return 'profile';
+    },
+    [isOwnProfile]
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedTab = params.get('tab');
+    const nextTab = getValidTab(requestedTab);
+    setActiveTab(nextTab);
+  }, [location.search, getValidTab]);
 
   const computeFriendStatus = useCallback(
     (viewer, profile) => {
@@ -81,6 +103,26 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const handleEditToggle = () => {
     setSaveError('');
     setIsEditing(prev => !prev);
+  };
+
+  const handleTabChange = (tab) => {
+    const nextTab = getValidTab(tab);
+    setActiveTab(nextTab);
+
+    const params = new URLSearchParams(location.search);
+    if (nextTab === 'profile') {
+      params.delete('tab');
+    } else {
+      params.set('tab', nextTab);
+    }
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString() ? `?${params.toString()}` : '',
+      },
+      { replace: true }
+    );
   };
 
   const handleProfileUpdate = async (updatedData) => {
@@ -266,7 +308,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
                   <button
                     key={tab}
                     className={tabClass(tab)}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabChange(tab)}
                   >
                     &gt; {tab.toUpperCase()}
                   </button>
@@ -314,7 +356,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
                   <CreateProject
                     user={user}
                     onProjectCreated={() => {
-                      setActiveTab('projects');
+                      handleTabChange('projects');
                       fetchProfile();
                     }}
                   />
