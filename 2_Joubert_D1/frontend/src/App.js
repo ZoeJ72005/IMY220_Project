@@ -101,7 +101,11 @@ function App() {
           element={
             user ? (
               user.role === 'admin' ? (
-                <AdminDashboard user={user} onLogout={handleLogout} />
+                <AdminDashboard
+                  user={user}
+                  onLogout={handleLogout}
+                  onUserUpdate={handleUserUpdate}
+                />
               ) : (
                 <Navigate to="/home" replace />
               )

@@ -229,6 +229,23 @@ const mapUserPreview = (user) => {
     };
 };
 
+const ADMIN_USER_SUMMARY_FIELDS = {
+    username: 1,
+    email: 1,
+    role: 1,
+    friends: 1,
+    projects: 1,
+};
+
+const mapAdminUserSummary = (userDoc) => ({
+    id: userDoc._id.toString(),
+    username: userDoc.username,
+    email: userDoc.email,
+    role: userDoc.role || 'user',
+    friends: Array.isArray(userDoc.friends) ? userDoc.friends.length : 0,
+    projects: Array.isArray(userDoc.projects) ? userDoc.projects.length : 0,
+});
+
 const buildProjection = (select) => {
     if (!select) {
         return undefined;
@@ -1083,22 +1100,75 @@ app.get('/api/admin/users', async (req, res) => {
 
     try {
         await requireAdmin(adminId);
-        const users = await Users.find({}).toArray();
+        const users = await Users.find({}, { projection: ADMIN_USER_SUMMARY_FIELDS }).toArray();
 
-        const payload = users.map((users) => ({
-            id: users._id.toString(),
-            username: users.username,
-            email: users.email,
-            role: users.role,
-            friends: users.friends?.length || 0,
-            projects: users.projects?.length || 0,
-        }));
+        const payload = users.map(mapAdminUserSummary);
 
         res.json({ success: true, users: payload });
     } catch (error) {
         console.error('Admin users error:', error);
         const status = error.statusCode || 500;
         res.status(status).json({ success: false, message: error.message || 'Server error loading users' });
+    }
+});
+
+app.patch('/api/admin/users/:id/role', async (req, res) => {
+    const targetUserId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+    const requestedRole = typeof req.body?.role === 'string' ? req.body.role.trim().toLowerCase() : null;
+
+    if (!targetUserId || !adminId || !requestedRole) {
+        return res.status(400).json({ success: false, message: 'Admin identifier, target user, and role are required' });
+    }
+
+    if (!['admin', 'user'].includes(requestedRole)) {
+        return res.status(400).json({ success: false, message: 'Role must be either "admin" or "user"' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+
+        const targetUser = await Users.findOne({ _id: targetUserId }, { projection: { role: 1 } });
+        if (!targetUser) {
+            return res.status(404).json({ success: false, message: 'Target user not found' });
+        }
+
+        if ((targetUser.role || 'user') === requestedRole) {
+            const unchanged = await Users.findOne(
+                { _id: targetUserId },
+                { projection: ADMIN_USER_SUMMARY_FIELDS }
+            );
+            return res.json({ success: true, user: mapAdminUserSummary(unchanged) });
+        }
+
+        if (targetUser.role === 'admin' && requestedRole !== 'admin') {
+            const adminCount = await Users.countDocuments({ role: 'admin' });
+            if (adminCount <= 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'At least one administrator must remain in the system',
+                });
+            }
+        }
+
+        const updatedUser = await Users.findOneAndUpdate(
+            { _id: targetUserId },
+            { $set: { role: requestedRole } },
+            {
+                returnDocument: 'after',
+                projection: ADMIN_USER_SUMMARY_FIELDS,
+            }
+        );
+
+        if (!updatedUser.value) {
+            return res.status(404).json({ success: false, message: 'Target user not found' });
+        }
+
+        res.json({ success: true, user: mapAdminUserSummary(updatedUser.value) });
+    } catch (error) {
+        console.error('Admin update user role error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error updating user role' });
     }
 });
 

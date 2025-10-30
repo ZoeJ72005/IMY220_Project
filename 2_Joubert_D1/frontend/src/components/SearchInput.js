@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './SearchInput.css';
 
 const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('projects');
   const [searchResults, setSearchResults] = useState([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const termFromUrl = params.get('term');
+    const typeFromUrl = params.get('type');
+
+    if (termFromUrl !== null) {
+      setSearchTerm(termFromUrl);
+    }
+    if (typeFromUrl && ['projects', 'users', 'tags', 'activity'].includes(typeFromUrl)) {
+      setSearchType(typeFromUrl);
+    } else if (!typeFromUrl) {
+      setSearchType('projects');
+    }
+
+    setSearchResults([]);
+  }, [location.search]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -14,9 +33,15 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
       return;
     }
 
-    await fetchSearch(searchTerm.trim(), searchType);
+    const trimmedTerm = searchTerm.trim();
     if (onSearch) {
-      onSearch(searchTerm.trim(), searchType);
+      await fetchSearch(trimmedTerm, searchType);
+      onSearch(trimmedTerm, searchType);
+    } else {
+      setSearchResults([]);
+      navigate(
+        `/search?term=${encodeURIComponent(trimmedTerm)}&type=${encodeURIComponent(searchType)}`
+      );
     }
   };
 

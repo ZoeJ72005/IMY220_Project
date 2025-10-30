@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 
-const AdminDashboard = ({ user, onLogout }) => {
+const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -9,6 +9,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [newType, setNewType] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updatingUserId, setUpdatingUserId] = useState('');
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
@@ -92,6 +93,39 @@ const AdminDashboard = ({ user, onLogout }) => {
       alert('Network error while deleting project type.');
     }
   };
+
+  const handleToggleRole = async (adminUser) => {
+    const nextRole = adminUser.role === 'admin' ? 'user' : 'admin';
+    setUpdatingUserId(adminUser.id);
+    try {
+      const response = await fetch(`/api/admin/users/${adminUser.id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: user.id, role: nextRole }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setUsers((previous) =>
+          previous.map((item) => (item.id === data.user.id ? data.user : item))
+        );
+
+        if (data.user.id === user.id) {
+          onUserUpdate({ ...user, role: data.user.role });
+        }
+      } else {
+        alert(data.message || 'Unable to update user role.');
+      }
+    } catch (updateError) {
+      alert('Network error while updating user role.');
+    } finally {
+      setUpdatingUserId('');
+    }
+  };
+
+  const adminCount = users.reduce((count, adminUser) => {
+    return adminUser.role === 'admin' ? count + 1 : count;
+  }, 0);
 
   if (!isAdmin) {
     return (
@@ -182,6 +216,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                   <th className="text-left py-2 pr-4">Role</th>
                   <th className="text-left py-2 pr-4">Friends</th>
                   <th className="text-left py-2 pr-4">Projects</th>
+                  <th className="text-left py-2 pr-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,6 +227,19 @@ const AdminDashboard = ({ user, onLogout }) => {
                     <td className="py-2 pr-4 uppercase">{adminUser.role}</td>
                     <td className="py-2 pr-4">{adminUser.friends}</td>
                     <td className="py-2 pr-4">{adminUser.projects}</td>
+                    <td className="py-2 pr-4">
+                      <button
+                        type="button"
+                        disabled={
+                          updatingUserId === adminUser.id ||
+                          (adminUser.role === 'admin' && adminCount <= 1 && adminUser.id === user.id)
+                        }
+                        onClick={() => handleToggleRole(adminUser)}
+                        className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-accent text-terminal-accent disabled:border-terminal-dim disabled:text-terminal-dim"
+                      >
+                        {adminUser.role === 'admin' ? 'Demote' : 'Promote'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
