@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import './EditProfile.css';
+import '../styles/EditProfile.css';
 import { resolveProfileImage } from '../utils/avatar';
 
 const IMAGE_MAX_SIZE_MB = 5;

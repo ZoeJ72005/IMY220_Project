@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import './MessagesComponent.css';
+import '../styles/MessagesComponent.css';
 
 const MessagesComponent = ({
   messages = [],

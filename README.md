@@ -1,6 +1,5 @@
 # IMY220_Project
 
-first change
+Author: Joubert_2 (u05084360)
 
-change 2, in local repo
-
+A retro terminal-themed version control website built with React and Express.js.

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './PendingRequestsCard.css';
+import '../styles/PendingRequestsCard.css';
 import { resolveProfileImage } from '../utils/avatar';
 
 const PendingRequestsCard = ({ user, onUserUpdate }) => {

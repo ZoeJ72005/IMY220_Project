@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import './ProfileComponent.css';
+import '../styles/ProfileComponent.css';
 import { resolveProfileImage } from '../utils/avatar';
 
 const ProfileComponent = ({

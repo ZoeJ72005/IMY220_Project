@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import './FilesComponent.css';
+import '../styles/FilesComponent.css';
 
 const formatBytes = (bytes) => {
   if (!bytes && bytes !== 0) return '0 B';

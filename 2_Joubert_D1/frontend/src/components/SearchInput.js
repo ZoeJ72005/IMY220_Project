@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import './SearchInput.css';
+import '../styles/SearchInput.css';
 
 const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
   const [searchTerm, setSearchTerm] = useState('');

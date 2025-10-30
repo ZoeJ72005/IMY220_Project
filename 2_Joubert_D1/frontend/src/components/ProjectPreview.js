@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import './ProjectPreview.css';
+import '../styles/ProjectPreview.css';
 
 const ProjectPreview = ({ project, currentUser, onProjectMutated }) => {
   const navigate = useNavigate();

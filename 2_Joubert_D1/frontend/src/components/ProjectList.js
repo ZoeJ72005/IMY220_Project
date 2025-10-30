@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './ComponentBase.css';
-import './ProjectList.css';
+import '../styles/ComponentBase.css';
+import '../styles/ProjectList.css';
 
 const ProjectList = ({ projects, isOwnProfile }) => {
   const title = isOwnProfile ? 'My Projects' : 'User Projects';

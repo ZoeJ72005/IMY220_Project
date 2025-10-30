@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import './CreateProject.css';
+import '../styles/CreateProject.css';
 
 const IMAGE_MAX_SIZE_MB = 5;
 const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;

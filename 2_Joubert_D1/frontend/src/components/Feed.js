@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ProjectPreview from './ProjectPreview';
-import './ComponentBase.css';
-import './Feed.css';
+import '../styles/ComponentBase.css';
+import '../styles/Feed.css';
 
 const Feed = ({ feedType, user }) => {
   const [projects, setProjects] = useState([]);

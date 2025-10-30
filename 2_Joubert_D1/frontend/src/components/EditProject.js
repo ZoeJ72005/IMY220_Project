@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import './ComponentBase.css';
-import './EditProject.css';
+import '../styles/ComponentBase.css';
+import '../styles/EditProject.css';
 
 const IMAGE_MAX_SIZE_MB = 5;
 

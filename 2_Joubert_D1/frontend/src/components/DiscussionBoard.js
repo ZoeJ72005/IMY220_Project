@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './DiscussionBoard.css';
+import '../styles/DiscussionBoard.css';
 
 const DiscussionBoard = ({
   discussion = [],
