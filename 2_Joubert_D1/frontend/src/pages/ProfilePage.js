@@ -15,6 +15,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [friendStatus, setFriendStatus] = useState('none');
+  const [saveError, setSaveError] = useState('');
 
   const isOwnProfile = user?.id?.toString() === userId;
 
@@ -77,11 +78,22 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
     }
   }, [user, profileUser, computeFriendStatus]);
 
-  const handleEditToggle = () => setIsEditing(prev => !prev);
+  const handleEditToggle = () => {
+    setSaveError('');
+    setIsEditing(prev => !prev);
+  };
 
   const handleProfileUpdate = async (updatedData) => {
+    setSaveError('');
+
+    const targetId = profileUser?.id || user?.id;
+    if (!targetId) {
+      setSaveError('Unable to determine which profile to update.');
+      return;
+    }
+
     try {
-        const response = await fetch(`/api/users/${user.id}`, {
+        const response = await fetch(`/api/users/${targetId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -90,29 +102,25 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
         });
         const data = await response.json();
 
-        if (data.success) {
+        if (response.ok && data.success) {
+            const viewerUpdate =
+              isOwnProfile && data.profile
+                ? { ...user, ...data.profile }
+                : user;
+
             setProfileUser(data.profile);
             setIsEditing(false);
 
             if (isOwnProfile && data.profile && onUserUpdate && user) {
-              onUserUpdate({
-                ...user,
-                fullName: data.profile.fullName,
-                bio: data.profile.bio,
-                location: data.profile.location,
-                company: data.profile.company,
-                website: data.profile.website,
-                profileImage: data.profile.profileImage,
-                languages: data.profile.languages,
-              });
+              onUserUpdate(viewerUpdate);
             }
 
-            setFriendStatus(computeFriendStatus(user, data.profile));
+            setFriendStatus(computeFriendStatus(viewerUpdate, data.profile));
         } else {
-            console.error('Error updating profile:', data.message);
+            setSaveError(data.message || 'Unable to save profile changes.');
         }
     } catch (error) {
-        console.error('Network error during profile update:', error);
+        setSaveError('Network error during profile update. Please try again.');
     }
   };
 
@@ -234,6 +242,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
                 profile={profileUser}
                 onSave={handleProfileUpdate}
                 onCancel={handleEditToggle}
+                errorMessage={saveError}
               />
             ) : (
               <ProfileComponent
@@ -266,38 +275,48 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
             </div>
 
             <div className="p-5 flex-1 relative">
-              {/* Profile/Activity Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'profile' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <h3 className="text-sm font-bold text-terminal-accent mb-4">RECENT_ACTIVITY</h3>
-                <div className="flex flex-col gap-3">
-                  {profileUser.projects?.slice(0, 3).map((p) => (
-                    <div key={p.id} className="flex gap-4 p-2.5 bg-[rgba(0,17,0,0.3)] border border-terminal-dim rounded font-fira-code text-xs">
-                      <span className="text-terminal-dim min-w-[80px]">{p.lastActivity}</span>
-                      <span className="text-terminal-text">{p.name}</span>
-                    </div>
-                  ))}
+              {activeTab === 'profile' && (
+                <div className="animate-fade-in">
+                  <h3 className="text-sm font-bold text-terminal-accent mb-4">RECENT_ACTIVITY</h3>
+                  <div className="flex flex-col gap-3">
+                    {profileUser.projects?.slice(0, 3).map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex gap-4 p-2.5 bg-[rgba(0,17,0,0.3)] border border-terminal-dim rounded font-fira-code text-xs"
+                      >
+                        <span className="text-terminal-dim min-w-[80px]">{p.lastActivity}</span>
+                        <span className="text-terminal-text">{p.name}</span>
+                      </div>
+                    ))}
+                    {(!profileUser.projects || profileUser.projects.length === 0) && (
+                      <div className="text-terminal-dim text-xs font-fira-code">
+                        No recent project activity recorded.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Projects Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'projects' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
-              </div>
+              {activeTab === 'projects' && (
+                <div key="projects" className="animate-fade-in">
+                  <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
+                </div>
+              )}
 
-              {/* Friends Tab */}
-              <div className={`transition-opacity duration-250 ${activeTab === 'friends' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
-              </div>
+              {activeTab === 'friends' && (
+                <div key="friends" className="animate-fade-in">
+                  <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
+                </div>
+              )}
 
-              {/* Create Project Tab */}
-              {isOwnProfile && (
-                <div className={`transition-opacity duration-250 ${activeTab === 'create' ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-                  <CreateProject 
-                    user={user} 
+              {activeTab === 'create' && isOwnProfile && (
+                <div key="create" className="animate-fade-in">
+                  <CreateProject
+                    user={user}
                     onProjectCreated={() => {
                       setActiveTab('projects');
                       fetchProfile();
-                    }} 
+                    }}
                   />
                 </div>
               )}

@@ -103,3 +103,18 @@ body {
   border-color: var(--terminal-accent);
 }
 /* Removed individual form classes as Tailwind handles them inline */
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-in;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

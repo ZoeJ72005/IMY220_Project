@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './EditProfile.css';
 
-const EditProfile = ({ profile, onSave, onCancel }) => {
+const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
   const [formData, setFormData] = useState({
     fullName: profile.fullName || '',
     bio: profile.bio || '',
@@ -182,6 +182,11 @@ const EditProfile = ({ profile, onSave, onCancel }) => {
             Cancel
           </button>
         </div>
+        {errorMessage && (
+          <div className="edit-profile__error edit-profile__error--global">
+            {errorMessage}
+          </div>
+        )}
       </form>
     </section>
   );

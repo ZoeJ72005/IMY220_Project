@@ -96,6 +96,11 @@
   color: var(--terminal-error);
 }
 
+.edit-profile__error--global {
+  margin-top: -0.5rem;
+  text-align: right;
+}
+
 .edit-profile__actions {
   display: flex;
   flex-wrap: wrap;
