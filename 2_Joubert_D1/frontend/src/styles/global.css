@@ -1,18 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
 
 :root {
-  --terminal-bg: #0d0f0f;
-  --terminal-bg-alt: #131717;
-  --terminal-surface: #1c2121;
-  --terminal-text: #b5f5c9;
-  --terminal-accent: #5dff8c;
-  --terminal-dim: #7aa38a;
-  --terminal-muted: #889997;
-  --terminal-error: #ff5c5c;
-  --terminal-warning: #ffd966;
-  --terminal-border: rgba(93, 255, 140, 0.35);
-  --terminal-input-bg: rgba(19, 23, 23, 0.85);
-  --terminal-button-hover: rgba(24, 107, 67, 0.4);
+  /* A darker, more modern terminal background */
+  --terminal-bg: #0d1117;
+  /* A secondary background for cards, inputs, etc. */
+  --terminal-bg-secondary: #161b22;
+
+  /* PRIMARY TEXT (Off-white for readability) */
+  --terminal-text-primary: #c9d1d9;
+  /* SECONDARY TEXT (Dimmed for subtitles, meta-info) */
+  --terminal-text-secondary: #8b949e;
+
+  /* ACCENT (The classic green) */
+  --terminal-accent: #39d353;
+  --terminal-accent-hover: #4ce165;
+  --terminal-accent-rgb: 57, 211, 83; /* For rgba() backgrounds */
+
+  /* BORDERS (Subtle, not glowing) */
+  --terminal-border-primary: #30363d;
+  --terminal-border-dim: #21262d;
+
+  /* STATUS */
+  --terminal-error: #f85149;
+  --terminal-warning: #d29922;
+
+  /* FONTS (Kept from your original) */
+  --font-primary: 'Fira Code', monospace;
+  --font-secondary: 'Share Tech Mono', monospace;
 }
 
 * {
@@ -22,10 +36,10 @@
 }
 
 body {
-  font-family: 'Fira Code', monospace;
-  background: radial-gradient(circle at top, #1d2524 0%, #090b0b 60%);
-  color: var(--terminal-text);
-  line-height: 1.4;
+  font-family: var(--font-primary);
+  background-color: var(--terminal-bg);
+  color: var(--terminal-text-primary); /* Use readable white for base text */
+  line-height: 1.5;
   overflow-x: hidden;
 }
 
@@ -34,78 +48,33 @@ body {
   background-color: var(--terminal-bg);
 }
 
-/* Terminal Effects */
+/* Base link styling */
+a {
+  color: var(--terminal-accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--terminal-text-primary);
+  font-family: var(--font-secondary);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* Blinking cursor */
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
 
-/* Removed unused @keyframes scanline and flicker for cleaner code */
-
 .cursor {
   animation: blink 1s infinite;
+  color: var(--terminal-accent);
 }
-
-.terminal-button {
-  background: linear-gradient(135deg, rgba(15, 40, 30, 0.7), rgba(12, 30, 24, 0.4));
-  color: var(--terminal-text);
-  border: 1px solid var(--terminal-border);
-  font-family: 'Fira Code', monospace;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  /* Tailwind classes handle padding, font-size, and width based on context */
-}
-
-.terminal-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.4), transparent);
-  transition: left 0.5s ease;
-}
-
-.terminal-button:hover {
-  background: linear-gradient(135deg, rgba(24, 58, 45, 0.8), rgba(15, 36, 28, 0.6));
-  box-shadow: 
-    0 0 18px rgba(93, 255, 140, 0.25),
-    inset 0 0 10px rgba(93, 255, 140, 0.18);
-  border-color: rgba(93, 255, 140, 0.6);
-  color: #e9fff0;
-  transform: translateY(-1px);
-}
-
-.terminal-button:hover::before {
-  left: 100%;
-}
-
-.terminal-button:active {
-  transform: translateY(0);
-  box-shadow: 
-    0 0 10px var(--terminal-text),
-    inset 0 0 15px rgba(0, 0, 0, 0.3);
-}
-
-.terminal-input {
-  background-color: var(--terminal-input-bg);
-  border: 1px solid rgba(93, 255, 140, 0.25);
-  color: var(--terminal-text);
-  font-family: 'Fira Code', monospace;
-  border-radius: 6px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.terminal-input:focus {
-  outline: none;
-  box-shadow: 0 0 12px rgba(93, 255, 140, 0.28);
-  border-color: rgba(93, 255, 140, 0.55);
-}
-/* Removed individual form classes as Tailwind handles them inline */
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-in;
