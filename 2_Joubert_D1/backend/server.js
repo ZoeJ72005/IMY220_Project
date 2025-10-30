@@ -45,7 +45,9 @@ const ensureDirSync = (dirPath) => {
 
 const UPLOADS_ROOT = path.join(__dirname, '../uploads');
 const PROJECT_UPLOADS_ROOT = path.join(UPLOADS_ROOT, 'projects');
+const PROFILE_UPLOADS_ROOT = path.join(UPLOADS_ROOT, 'profiles');
 ensureDirSync(PROJECT_UPLOADS_ROOT);
+ensureDirSync(PROFILE_UPLOADS_ROOT);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -88,6 +90,31 @@ const projectStorage = multer.diskStorage({
 const projectUpload = multer({
     storage: projectStorage,
     limits: { fileSize: PROJECT_FILE_MAX_BYTES },
+});
+
+const profileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        try {
+            ensureDirSync(PROFILE_UPLOADS_ROOT);
+            cb(null, PROFILE_UPLOADS_ROOT);
+        } catch (error) {
+            cb(error);
+        }
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const baseName = path
+            .basename(file.originalname, ext)
+            .replace(/[^a-zA-Z0-9-_]/g, '_')
+            .toLowerCase();
+        const uniqueSuffix = crypto.randomBytes(6).toString('hex');
+        cb(null, `${baseName || 'profile'}-${uniqueSuffix}${ext}`);
+    },
+});
+
+const profileUpload = multer({
+    storage: profileStorage,
+    limits: { fileSize: IMAGE_MAX_SIZE_BYTES },
 });
 
 const DEFAULT_PROJECT_TYPES = [
@@ -156,23 +183,530 @@ const normalizeTags = (tagsInput) => {
         .filter(Boolean);
 };
 
+const normalizeLanguages = (languagesInput) => {
+    if (!languagesInput) {
+        return [];
+    }
+    if (Array.isArray(languagesInput)) {
+        return languagesInput
+            .flatMap((item) => String(item).split(/[,;#/]/))
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    if (typeof languagesInput === 'string') {
+        return languagesInput
+            .split(/[,;#/]/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildLooseRegex = (term = '') => {
+    if (!term) {
+        return null;
+    }
+    const safe = term
+        .split('')
+        .map((char) => escapeRegex(char))
+        .join('.*');
+    return new RegExp(safe, 'i');
+};
+
+const tokenizeForSearch = (value = '') =>
+    value
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+const levenshteinDistance = (a = '', b = '') => {
+    if (a === b) {
+        return 0;
+    }
+    const lenA = a.length;
+    const lenB = b.length;
+    if (lenA === 0) {
+        return lenB;
+    }
+    if (lenB === 0) {
+        return lenA;
+    }
+
+    const prev = new Array(lenB + 1);
+    const current = new Array(lenB + 1);
+
+    for (let j = 0; j <= lenB; j += 1) {
+        prev[j] = j;
+    }
+
+    for (let i = 1; i <= lenA; i += 1) {
+        current[0] = i;
+        const charA = a.charCodeAt(i - 1);
+        for (let j = 1; j <= lenB; j += 1) {
+            const cost = charA === b.charCodeAt(j - 1) ? 0 : 1;
+            current[j] = Math.min(
+                prev[j] + 1,
+                current[j - 1] + 1,
+                prev[j - 1] + cost
+            );
+        }
+        for (let j = 0; j <= lenB; j += 1) {
+            prev[j] = current[j];
+        }
+    }
+
+    return current[lenB];
+};
+
+const computeMatchScore = (term, text) => {
+    if (!term || !text) {
+        return 0;
+    }
+
+    const search = term.toLowerCase().trim();
+    const candidate = text.toString().toLowerCase().trim();
+
+    if (!candidate) {
+        return 0;
+    }
+
+    if (candidate === search) {
+        return 1;
+    }
+
+    if (candidate.startsWith(search)) {
+        return 0.95;
+    }
+
+    if (candidate.includes(search)) {
+        const index = candidate.indexOf(search);
+        const closeness = 1 - index / Math.max(candidate.length, 1);
+        return 0.75 + closeness * 0.2;
+    }
+
+    const searchTokens = tokenizeForSearch(search);
+    const candidateTokens = tokenizeForSearch(candidate);
+
+    if (searchTokens.length > 1) {
+        const matches = searchTokens.filter((token) => candidate.includes(token));
+        if (matches.length) {
+            return 0.6 + 0.4 * (matches.length / searchTokens.length);
+        }
+    }
+
+    let best = 0;
+    for (const token of candidateTokens) {
+        if (!token) {
+            // eslint-disable-next-line no-continue
+            continue;
+        }
+        if (token === search) {
+            best = Math.max(best, 0.9);
+            continue;
+        }
+        const distance = levenshteinDistance(search, token);
+        const fuzzy = 1 - distance / Math.max(search.length, token.length, 1);
+        if (fuzzy > best) {
+            best = fuzzy * 0.85;
+        }
+    }
+
+    if (best < 0.8) {
+        const trimmedCandidate = candidate.slice(
+            0,
+            Math.max(search.length + 4, Math.min(candidate.length, 120))
+        );
+        const distance = levenshteinDistance(search, trimmedCandidate);
+        const fuzzy = 1 - distance / Math.max(search.length, trimmedCandidate.length || 1);
+        best = Math.max(best, fuzzy * 0.8);
+    }
+
+    return best;
+};
+
+const aggregateMatchScore = (term, texts = []) => {
+    if (!term || !Array.isArray(texts) || texts.length === 0) {
+        return 0;
+    }
+
+    let best = 0;
+    texts.forEach((text) => {
+        const score = computeMatchScore(term, text);
+        if (score > best) {
+            best = score;
+        }
+    });
+    return best;
+};
+
+const DEFAULT_SEARCH_LIMIT = 25;
+const DEFAULT_SEARCH_THRESHOLD = 0.35;
+const DEFAULT_SUGGESTION_THRESHOLD = 0.25;
+
+const PROJECT_SEARCH_PROJECTION = {
+    name: 1,
+    description: 1,
+    tags: 1,
+    type: 1,
+    ownerId: 1,
+    image: 1,
+    version: 1,
+};
+
+const USER_SEARCH_PROJECTION = {
+    username: 1,
+    fullName: 1,
+    email: 1,
+    bio: 1,
+    profileImage: 1,
+    verified: 1,
+};
+
+const searchProjects = async (term, options = {}) => {
+    if (!Projects || !term) {
+        return [];
+    }
+
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+    const threshold = options.threshold ?? DEFAULT_SEARCH_THRESHOLD;
+    const regexLimit = options.regexLimit || 120;
+    const sampleLimit = options.sampleLimit || 240;
+    const focus = options.focus || 'projects';
+
+    const regex = buildLooseRegex(term);
+    let docs = [];
+
+    if (regex) {
+        docs = await Projects.find(
+            {
+                $or: [
+                    { name: regex },
+                    { tags: regex },
+                    { type: regex },
+                    { description: regex },
+                ],
+            },
+            { projection: PROJECT_SEARCH_PROJECTION }
+        )
+            .limit(regexLimit)
+            .toArray();
+    }
+
+    if (!docs.length || docs.length < limit) {
+        const additional = await Projects.find(
+            {},
+            { projection: PROJECT_SEARCH_PROJECTION }
+        )
+            .limit(sampleLimit)
+            .toArray();
+        docs = dedupeDocsById([...docs, ...additional]);
+    }
+
+    const ownerIds = normalizeObjectIdArray(docs.map((doc) => doc.ownerId));
+    const ownerDocs = await fetchUsersByIds(ownerIds, 'username');
+    const ownerMap = docsToMapById(ownerDocs);
+
+    const matches = docs
+        .map((doc) => {
+            const baseScore = aggregateMatchScore(term, [
+                doc.name,
+                doc.description,
+                doc.type,
+                doc.version,
+            ]);
+            const tagScore = aggregateMatchScore(term, doc.tags || []);
+            const score =
+                focus === 'tags'
+                    ? Math.max(tagScore * 1.1, baseScore * 0.8)
+                    : Math.max(baseScore, tagScore * 0.9);
+            return { doc, score };
+        })
+        .filter(({ score }) => score >= threshold);
+
+    const ranked = rankAndTrimMatches(matches, limit);
+
+    return ranked.map(({ doc, score }) => ({
+        id: doc._id.toString(),
+        name: doc.name,
+        type: 'projects',
+        description: doc.description || '',
+        imageUrl: buildPublicUrl(doc.image),
+        owner: ownerMap.get(doc.ownerId?.toString())?.username || 'unknown',
+        version: doc.version || '',
+        score,
+    }));
+};
+
+const searchUsers = async (term, options = {}) => {
+    if (!Users || !term) {
+        return [];
+    }
+
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+    const threshold = options.threshold ?? DEFAULT_SEARCH_THRESHOLD;
+    const regexLimit = options.regexLimit || 120;
+    const sampleLimit = options.sampleLimit || 240;
+
+    const regex = buildLooseRegex(term);
+    let docs = [];
+
+    if (regex) {
+        docs = await Users.find(
+            {
+                $or: [
+                    { username: regex },
+                    { fullName: regex },
+                    { email: regex },
+                ],
+            },
+            { projection: USER_SEARCH_PROJECTION }
+        )
+            .limit(regexLimit)
+            .toArray();
+    }
+
+    if (!docs.length || docs.length < limit) {
+        const additional = await Users.find({}, { projection: USER_SEARCH_PROJECTION })
+            .limit(sampleLimit)
+            .toArray();
+        docs = dedupeDocsById([...docs, ...additional]);
+    }
+
+    const matches = docs
+        .map((doc) => {
+            const score = aggregateMatchScore(term, [
+                doc.username,
+                doc.fullName,
+                doc.email,
+                doc.bio,
+            ]);
+            return { doc, score };
+        })
+        .filter(({ score }) => score >= threshold);
+
+    const ranked = rankAndTrimMatches(matches, limit);
+
+    return ranked.map(({ doc, score }) => ({
+        id: doc._id.toString(),
+        name: doc.username,
+        type: 'users',
+        description: doc.bio || doc.email || '',
+        profileImage: resolveProfileImageUrl(doc.profileImage || ''),
+        verified: !!doc.verified,
+        score,
+    }));
+};
+
+const searchTags = async (term, options = {}) =>
+    searchProjects(term, { ...options, focus: 'tags' });
+
+const searchActivity = async (term, options = {}) => {
+    if (!Messages || !Projects || !term) {
+        return [];
+    }
+
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+    const threshold = options.threshold ?? DEFAULT_SEARCH_THRESHOLD;
+    const regexLimit = options.regexLimit || 200;
+    const sampleLimit = options.sampleLimit || 320;
+
+    const regex = buildLooseRegex(term);
+    let docs = [];
+
+    if (regex) {
+        docs = await Messages.find({
+            $or: [
+                { message: regex },
+                { action: regex },
+            ],
+        })
+            .sort({ time: -1 })
+            .limit(regexLimit)
+            .toArray();
+    }
+
+    if (!docs.length || docs.length < limit) {
+        const additional = await Messages.find({})
+            .sort({ time: -1 })
+            .limit(sampleLimit)
+            .toArray();
+        docs = dedupeDocsById([...docs, ...additional]);
+    }
+
+    const projectIds = normalizeObjectIdArray(docs.map((doc) => doc.projectId));
+    const userIds = normalizeObjectIdArray(docs.map((doc) => doc.userId));
+
+    const [projectDocs, userDocs] = await Promise.all([
+        projectIds.length
+            ? Projects.find(
+                  { _id: { $in: projectIds } },
+                  { projection: { name: 1, image: 1 } }
+              ).toArray()
+            : [],
+        userIds.length ? fetchUsersByIds(userIds, 'username profileImage') : [],
+    ]);
+
+    const projectMap = docsToMapById(projectDocs);
+    const userMap = docsToMapById(userDocs);
+
+    const matches = docs
+        .map((doc) => {
+            const project = doc.projectId ? projectMap.get(doc.projectId.toString()) : null;
+            const user = doc.userId ? userMap.get(doc.userId.toString()) : null;
+            const score = aggregateMatchScore(term, [
+                doc.message,
+                doc.action,
+                project?.name || '',
+                user?.username || '',
+            ]);
+            return { doc, project, user, score };
+        })
+        .filter(({ score }) => score >= threshold);
+
+    const ranked = rankAndTrimMatches(matches, limit);
+
+    return ranked.map(({ doc, project, user, score }) => ({
+        id: doc._id.toString(),
+        name: project?.name || 'Unknown project',
+        type: 'activity',
+        description: doc.message || '',
+        projectId: project?._id?.toString(),
+        projectImage: buildPublicUrl(project?.image || ''),
+        user: mapUserPreview(user || doc.userId),
+        time: doc.time ? new Date(doc.time).toLocaleString() : '',
+        score,
+    }));
+};
+
+const SEARCH_HANDLERS = {
+    projects: searchProjects,
+    users: searchUsers,
+    tags: searchTags,
+    activity: searchActivity,
+};
+
+const executeSearch = async (term, type, options = {}) => {
+    const handler = SEARCH_HANDLERS[type];
+    if (!handler) {
+        throw new Error('Unsupported search type');
+    }
+    return handler(term, options);
+};
+
+const executeSuggestions = async (term, types, options = {}) => {
+    if (!term) {
+        return [];
+    }
+
+    const uniqueTypes = Array.isArray(types) && types.length
+        ? types
+        : Object.keys(SEARCH_HANDLERS);
+
+    const limitPerType = options.limitPerType || 5;
+    const threshold = options.threshold ?? DEFAULT_SUGGESTION_THRESHOLD;
+
+    const results = await Promise.all(
+        uniqueTypes.map((type) =>
+            executeSearch(term, type, {
+                ...options,
+                limit: limitPerType,
+                threshold,
+            }).catch(() => [])
+        )
+    );
+
+    const combined = results.flat();
+    const seen = new Set();
+    const ordered = [];
+
+    combined
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .forEach((entry) => {
+            const key = `${entry.type}-${entry.id}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                ordered.push(entry);
+            }
+        });
+
+    const overallLimit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+    return ordered.slice(0, overallLimit);
+};
+
+const dedupeDocsById = (docs = []) => {
+    const map = new Map();
+    docs.forEach((doc) => {
+        if (doc?._id) {
+            map.set(doc._id.toString(), doc);
+        }
+    });
+    return Array.from(map.values());
+};
+
+const rankAndTrimMatches = (matches = [], limit = DEFAULT_SEARCH_LIMIT) =>
+    matches
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
 const getRelativePath = (absolutePath) => {
+    if (!absolutePath) {
+        return '';
+    }
     const relative = path.relative(UPLOADS_ROOT, absolutePath);
     return relative.replace(/\\/g, '/');
 };
+
+const stripUploadsPrefix = (value = '') =>
+    value.replace(/^\/?uploads\//i, '').replace(/\\/g, '/');
+
+const isExternalUrl = (value = '') => /^https?:\/\//i.test(value);
 
 const buildPublicUrl = (relativePath) => {
     if (!relativePath) {
         return '';
     }
-    return `/uploads/${relativePath.replace(/\\/g, '/')}`;
+
+    if (isExternalUrl(relativePath) || relativePath.startsWith('/uploads/')) {
+        return relativePath;
+    }
+
+    const cleaned = stripUploadsPrefix(relativePath);
+    if (!cleaned) {
+        return '';
+    }
+
+    return `/uploads/${cleaned}`;
+};
+
+const resolveProfileImageUrl = (value) => {
+    if (!value) {
+        return '';
+    }
+
+    if (isExternalUrl(value) || value.startsWith('/uploads/')) {
+        return value;
+    }
+
+    const cleaned = stripUploadsPrefix(value);
+    if (!cleaned) {
+        return '';
+    }
+
+    return `/uploads/${cleaned}`;
 };
 
 const removeFileIfExists = (relativePath) => {
-    if (!relativePath) {
+    if (!relativePath || isExternalUrl(relativePath)) {
         return;
     }
-    const absolutePath = path.join(UPLOADS_ROOT, relativePath);
+    const storedPath = stripUploadsPrefix(relativePath);
+    if (!storedPath) {
+        return;
+    }
+    const absolutePath = path.join(UPLOADS_ROOT, storedPath);
     if (fs.existsSync(absolutePath)) {
         try {
             fs.unlinkSync(absolutePath);
@@ -225,7 +759,7 @@ const mapUserPreview = (user) => {
     return {
         id,
         username: user.username || 'unknown',
-        profileImage: user.profileImage || '',
+        profileImage: resolveProfileImageUrl(user.profileImage || ''),
     };
 };
 
@@ -235,6 +769,8 @@ const ADMIN_USER_SUMMARY_FIELDS = {
     role: 1,
     friends: 1,
     projects: 1,
+    verified: 1,
+    profileImage: 1,
 };
 
 const mapAdminUserSummary = (userDoc) => ({
@@ -242,6 +778,8 @@ const mapAdminUserSummary = (userDoc) => ({
     username: userDoc.username,
     email: userDoc.email,
     role: userDoc.role || 'user',
+    verified: !!userDoc.verified,
+    profileImage: resolveProfileImageUrl(userDoc.profileImage || ''),
     friends: Array.isArray(userDoc.friends) ? userDoc.friends.length : 0,
     projects: Array.isArray(userDoc.projects) ? userDoc.projects.length : 0,
 });
@@ -453,7 +991,7 @@ const buildAuthUserPayload = async (userId) => {
         username: userDoc.username,
         email: userDoc.email,
         fullName: userDoc.fullName || '',
-        profileImage: userDoc.profileImage || '',
+        profileImage: resolveProfileImageUrl(userDoc.profileImage || ''),
         bio: userDoc.bio || '',
         location: userDoc.location || '',
         company: userDoc.company || '',
@@ -461,6 +999,7 @@ const buildAuthUserPayload = async (userId) => {
         languages: userDoc.languages || [],
         joinDate: userDoc.joinDate ? new Date(userDoc.joinDate).toISOString() : null,
         role: userDoc.role || 'user',
+        verified: !!userDoc.verified,
         friends: buildPreviewList(friendIds, friendMap),
         pendingFriendRequests: buildPreviewList(pendingIds, pendingMap),
         outgoingFriendRequests: buildPreviewList(outgoingIds, outgoingMap),
@@ -518,6 +1057,7 @@ const buildProfilePayload = async (profileId, viewerId = null) => {
         joinDate: basePayload.joinDate,
         relation,
         isFriend,
+        verified: !!basePayload.verified,
         friendCount,
         projectCount,
         projects: relation === 'restricted' ? [] : projectSummaries,
@@ -610,6 +1150,26 @@ const populateProjectDetail = async (projectId) => {
         };
     });
 
+    const versionHistoryEntries = Array.isArray(projects.versionHistory) ? projects.versionHistory : [];
+    const historyUserIds = normalizeObjectIdArray(versionHistoryEntries.map((entry) => entry.userId));
+    const historyUserDocs = await fetchUsersByIds(historyUserIds);
+    const historyUserMap = docsToMapById(historyUserDocs);
+
+    const enrichedHistory = versionHistoryEntries
+        .map((entry) => {
+            const userId = entry.userId ? entry.userId.toString() : null;
+            return {
+                ...entry,
+                userId: userId ? historyUserMap.get(userId) || { _id: entry.userId } : null,
+                files: (entry.files || []).map((file) => ({ ...file })),
+            };
+        })
+        .sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA;
+        });
+
     return {
         ...projects,
         ownerId: ownerDoc,
@@ -617,6 +1177,7 @@ const populateProjectDetail = async (projectId) => {
         members: memberIds.map((id) => memberMap.get(id.toString()) || { _id: id }),
         files: enrichedFiles,
         activity: enrichedActivity,
+        versionHistory: enrichedHistory,
     };
 };
 
@@ -652,6 +1213,15 @@ const requireAdmin = async (userId) => {
 };
 
 
+const formatVersionHistoryEntry = (projectId, entry) => ({
+    id: entry._id?.toString() || entry.id?.toString() || null,
+    version: entry.version,
+    message: entry.message || '',
+    createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : null,
+    user: mapUserPreview(entry.userId),
+    files: (entry.files || []).map((fileDoc) => buildFilePayload(projectId, fileDoc)),
+});
+
 const formatProjectDetail = (projects) => ({
     id: projects._id.toString(),
     name: projects.name,
@@ -669,6 +1239,9 @@ const formatProjectDetail = (projects) => ({
     imageUrl: buildPublicUrl(projects.image),
     files: (projects.files || []).map((fileDoc) => buildFilePayload(projects._id, fileDoc)),
     activity: formatActivity(projects.activity),
+    versionHistory: (projects.versionHistory || []).map((entry) =>
+        formatVersionHistoryEntry(projects._id, entry)
+    ),
 });
 
 const formatDiscussionMessage = (message) => ({
@@ -777,6 +1350,7 @@ app.post('/api/auth/signup', async (req, res) => {
             languages: [],
             joinDate: now,
             role: 'user',
+            verified: false,
             friends: [],
             projects: [],
             pendingFriendRequests: [],
@@ -832,9 +1406,30 @@ app.put('/api/users/:id', async (req, res) => {
     const updateData = {};
 
     allowedFields.forEach((field) => {
-        if (field in req.body) {
-            updateData[field] = req.body[field];
+        if (!(field in req.body)) {
+            return;
         }
+
+        const value = req.body[field];
+
+        if (field === 'languages') {
+            updateData.languages = normalizeLanguages(value);
+            return;
+        }
+
+        if (field === 'profileImage') {
+            if (typeof value === 'string' && value.trim()) {
+                const trimmed = value.trim();
+                updateData.profileImage = isExternalUrl(trimmed)
+                    ? trimmed
+                    : stripUploadsPrefix(trimmed);
+            } else if (!value) {
+                updateData.profileImage = '';
+            }
+            return;
+        }
+
+        updateData[field] = typeof value === 'string' ? value.trim() : value;
     });
 
     try {
@@ -851,6 +1446,88 @@ app.put('/api/users/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
+app.put(
+    '/api/users/:id/profile',
+    profileUpload.single('profileImage'),
+    async (req, res) => {
+        const userId = toObjectId(req.params.id);
+        if (!userId) {
+            if (req.file?.path) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (error) {
+                    console.warn('Unable to remove uploaded profile image:', req.file.path, error.message);
+                }
+            }
+            return res.status(400).json({ success: false, message: 'Invalid user identifier' });
+        }
+
+        const updateSet = {};
+        const allowedTextFields = ['fullName', 'bio', 'location', 'company', 'website', 'languages'];
+
+        allowedTextFields.forEach((field) => {
+            if (!(field in req.body)) {
+                return;
+            }
+
+            const value = req.body[field];
+            if (field === 'languages') {
+                updateSet.languages = normalizeLanguages(value);
+                return;
+            }
+
+            updateSet[field] = typeof value === 'string' ? value.trim() : value;
+        });
+
+        let previousUser = null;
+        if (req.file) {
+            updateSet.profileImage = getRelativePath(req.file.path);
+            previousUser = await findUserById(userId, 'profileImage');
+        }
+
+        try {
+            if (Object.keys(updateSet).length === 0) {
+                const profile = await buildProfilePayload(userId, userId);
+                return res.json({ success: true, profile });
+            }
+
+            const updatedUser = await updateUserById(userId, { $set: updateSet }, { new: true });
+
+            if (!updatedUser) {
+                if (req.file?.path) {
+                    try {
+                        fs.unlinkSync(req.file.path);
+                    } catch (error) {
+                        console.warn(
+                            'Unable to remove uploaded profile image after missing user:',
+                            req.file.path,
+                            error.message
+                        );
+                    }
+                }
+                return res.status(404).json({ success: false, message: 'User not found' });
+            }
+
+            if (req.file && previousUser?.profileImage && previousUser.profileImage !== updatedUser.profileImage) {
+                removeFileIfExists(previousUser.profileImage);
+            }
+
+            const profile = await buildProfilePayload(userId, userId);
+            res.json({ success: true, profile });
+        } catch (error) {
+            if (req.file?.path) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.warn('Unable to remove uploaded profile image after failure:', unlinkError.message);
+                }
+            }
+            console.error('Profile image update error:', error);
+            res.status(500).json({ success: false, message: 'Server error updating profile' });
+        }
+    }
+);
 
 // POST Add Friend
 app.post('/api/users/:id/friend-requests', async (req, res) => {
@@ -1231,6 +1908,137 @@ app.patch('/api/admin/users/:id/role', async (req, res) => {
     }
 });
 
+app.patch('/api/admin/users/:id', async (req, res) => {
+    const targetUserId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+
+    if (!targetUserId || !adminId) {
+        return res.status(400).json({ success: false, message: 'Admin and user identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+
+        const updateSet = {};
+        if (typeof req.body.username === 'string') {
+            updateSet.username = req.body.username.trim();
+        }
+        if (typeof req.body.email === 'string') {
+            updateSet.email = req.body.email.trim().toLowerCase();
+        }
+        if (typeof req.body.fullName === 'string') updateSet.fullName = req.body.fullName.trim();
+        if (typeof req.body.bio === 'string') updateSet.bio = req.body.bio.trim();
+        if (typeof req.body.location === 'string') updateSet.location = req.body.location.trim();
+        if (typeof req.body.company === 'string') updateSet.company = req.body.company.trim();
+        if (typeof req.body.website === 'string') updateSet.website = req.body.website.trim();
+        if (req.body.languages !== undefined) updateSet.languages = normalizeLanguages(req.body.languages);
+
+        if (Object.keys(updateSet).length === 0) {
+            return res.status(400).json({ success: false, message: 'No user fields provided for update' });
+        }
+
+        if (updateSet.username) {
+            const existingUsername = await Users.findOne({
+                _id: { $ne: targetUserId },
+                username: updateSet.username,
+            });
+            if (existingUsername) {
+                return res.status(409).json({ success: false, message: 'Username already in use' });
+            }
+        }
+
+        if (updateSet.email) {
+            const existingEmail = await Users.findOne({
+                _id: { $ne: targetUserId },
+                email: updateSet.email,
+            });
+            if (existingEmail) {
+                return res.status(409).json({ success: false, message: 'Email already in use' });
+            }
+        }
+
+        const updatedUser = await Users.findOneAndUpdate(
+            { _id: targetUserId },
+            { $set: updateSet },
+            { returnDocument: 'after', projection: ADMIN_USER_SUMMARY_FIELDS }
+        );
+
+        if (!updatedUser.value) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, user: mapAdminUserSummary(updatedUser.value) });
+    } catch (error) {
+        console.error('Admin update user error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error updating user' });
+    }
+});
+
+app.delete('/api/admin/users/:id', async (req, res) => {
+    const targetUserId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+
+    if (!targetUserId || !adminId) {
+        return res.status(400).json({ success: false, message: 'Admin and user identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+
+        const userDoc = await Users.findOne({ _id: targetUserId });
+        if (!userDoc) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if ((userDoc.role || 'user') === 'admin') {
+            const adminCount = await Users.countDocuments({ role: 'admin' });
+            if (adminCount <= 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'At least one administrator must remain in the system',
+                });
+            }
+        }
+
+        await cascadeDeleteUser(userDoc);
+
+        res.json({ success: true, message: 'User account deleted successfully' });
+    } catch (error) {
+        console.error('Admin delete user error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error deleting user' });
+    }
+});
+
+app.post('/api/admin/users/:id/verify', async (req, res) => {
+    const targetUserId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+
+    if (!targetUserId || !adminId) {
+        return res.status(400).json({ success: false, message: 'Admin and user identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const updated = await Users.findOneAndUpdate(
+            { _id: targetUserId },
+            { $set: { verified: true } },
+            { returnDocument: 'after', projection: ADMIN_USER_SUMMARY_FIELDS }
+        );
+
+        if (!updated.value) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, user: mapAdminUserSummary(updated.value) });
+    } catch (error) {
+        console.error('Admin verify user error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error verifying user' });
+    }
+});
+
 app.get('/api/admin/projects', async (req, res) => {
     const { adminId } = req.query;
     if (!adminId) {
@@ -1260,6 +2068,167 @@ app.get('/api/admin/projects', async (req, res) => {
         console.error('Admin projects error:', error);
         const status = error.statusCode || 500;
         res.status(status).json({ success: false, message: error.message || 'Server error loading projects' });
+    }
+});
+
+app.put('/api/admin/projects/:id', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+
+    if (!projectId || !adminId) {
+        return res.status(400).json({ success: false, message: 'Admin and project identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+
+        const updateSet = {};
+        const maybeName = req.body.name ? sanitizeProjectName(req.body.name) : '';
+        const maybeDescription = req.body.description ? sanitizeProjectDescription(req.body.description) : '';
+        const maybeType = typeof req.body.type === 'string' ? req.body.type.trim().toLowerCase() : '';
+        const maybeVersion = typeof req.body.version === 'string' ? req.body.version.trim() : '';
+
+        if (maybeName) updateSet.name = maybeName;
+        if (maybeDescription) updateSet.description = maybeDescription;
+        if (maybeVersion) updateSet.version = maybeVersion;
+        if (req.body.tags !== undefined) {
+            updateSet.tags = normalizeTags(req.body.tags);
+        }
+        if (maybeType) {
+            const availableTypes = await getProjectTypes();
+            if (!availableTypes.includes(maybeType)) {
+                return res.status(400).json({ success: false, message: 'Project type is invalid' });
+            }
+            updateSet.type = maybeType;
+        }
+
+        if (Object.keys(updateSet).length === 0) {
+            return res.status(400).json({ success: false, message: 'No project fields provided for update' });
+        }
+
+        const updated = await updateProjectById(projectId, { $set: updateSet }, { new: true });
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        const populatedProject = await populateProjectDetail(projectId);
+        res.json({
+            success: true,
+            project: formatProjectDetail(populatedProject),
+        });
+    } catch (error) {
+        console.error('Admin update project error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error updating project' });
+    }
+});
+
+app.delete('/api/admin/projects/:id', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    const adminId = toObjectId(req.body?.adminId);
+
+    if (!projectId || !adminId) {
+        return res.status(400).json({ success: false, message: 'Admin and project identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const project = await Projects.findOne({ _id: projectId });
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        await cascadeDeleteProject(project);
+        res.json({ success: true, message: 'Project deleted successfully' });
+    } catch (error) {
+        console.error('Admin delete project error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error deleting project' });
+    }
+});
+
+app.patch('/api/admin/projects/:projectId/discussion/:messageId', async (req, res) => {
+    const adminId = toObjectId(req.body?.adminId);
+    const projectId = toObjectId(req.params.projectId);
+    const messageId = toObjectId(req.params.messageId);
+    const message = (req.body?.message || '').trim();
+
+    if (!adminId || !projectId || !messageId) {
+        return res.status(400).json({ success: false, message: 'Admin, project, and message identifiers are required' });
+    }
+
+    if (!message) {
+        return res.status(400).json({ success: false, message: 'Updated message content cannot be empty' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const result = await DiscussionMessages.updateOne(
+            { _id: messageId, projectId },
+            { $set: { message, updatedAt: new Date() } }
+        );
+
+        if (!result.matchedCount) {
+            return res.status(404).json({ success: false, message: 'Discussion message not found' });
+        }
+
+        res.json({ success: true, message: 'Discussion message updated' });
+    } catch (error) {
+        console.error('Admin update discussion error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error updating discussion message' });
+    }
+});
+
+app.delete('/api/admin/projects/:projectId/discussion/:messageId', async (req, res) => {
+    const adminId = toObjectId(req.body?.adminId);
+    const projectId = toObjectId(req.params.projectId);
+    const messageId = toObjectId(req.params.messageId);
+
+    if (!adminId || !projectId || !messageId) {
+        return res.status(400).json({ success: false, message: 'Admin, project, and message identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const result = await DiscussionMessages.deleteOne({ _id: messageId, projectId });
+        if (!result.deletedCount) {
+            return res.status(404).json({ success: false, message: 'Discussion message not found' });
+        }
+        res.json({ success: true, message: 'Discussion message deleted' });
+    } catch (error) {
+        console.error('Admin delete discussion error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error deleting discussion message' });
+    }
+});
+
+app.delete('/api/admin/projects/:projectId/messages/:messageId', async (req, res) => {
+    const adminId = toObjectId(req.body?.adminId);
+    const projectId = toObjectId(req.params.projectId);
+    const messageId = toObjectId(req.params.messageId);
+
+    if (!adminId || !projectId || !messageId) {
+        return res.status(400).json({ success: false, message: 'Admin, project, and message identifiers are required' });
+    }
+
+    try {
+        await requireAdmin(adminId);
+        const result = await Messages.deleteOne({ _id: messageId, projectId });
+        if (!result.deletedCount) {
+            return res.status(404).json({ success: false, message: 'Project message not found' });
+        }
+
+        await Projects.updateOne(
+            { _id: projectId },
+            { $pull: { activity: messageId } }
+        );
+
+        res.json({ success: true, message: 'Project activity entry removed' });
+    } catch (error) {
+        console.error('Admin delete activity message error:', error);
+        const status = error.statusCode || 500;
+        res.status(status).json({ success: false, message: error.message || 'Server error deleting activity message' });
     }
 });
 
@@ -1442,6 +2411,15 @@ try {
         createFileRecord(file, req.projectUploadId, ownerObjectId)
     );
 
+    const initialHistoryEntry = {
+        _id: new ObjectId(),
+        version,
+        message: 'Initial version',
+        createdAt: new Date(),
+        userId: ownerObjectId,
+        files: fileRecords.map((file) => ({ ...file })),
+    };
+
     const projectDoc = {
         _id: req.projectUploadId,
         name,
@@ -1459,6 +2437,7 @@ try {
         checkoutStatus: 'checked-in',
         checkedOutBy: null,
         activity: [],
+        versionHistory: [initialHistoryEntry],
     };
 
     await Projects.insertOne(projectDoc);
@@ -1557,6 +2536,99 @@ app.put('/api/projects/:id', projectUpload.single('projectImage'), async (req, r
     }
 });
 
+const cascadeDeleteProject = async (projectDoc) => {
+    if (!projectDoc || !projectDoc._id) {
+        return;
+    }
+
+    const projectId = projectDoc._id instanceof ObjectId ? projectDoc._id : toObjectId(projectDoc._id);
+    if (!projectId) {
+        return;
+    }
+
+    await Promise.all([
+        Messages.deleteMany({ projectId }),
+        DiscussionMessages.deleteMany({ projectId }),
+    ]);
+
+    const memberIdSet = new Set((projectDoc.members || []).map((id) => id.toString()));
+    if (projectDoc.ownerId) {
+        memberIdSet.add(projectDoc.ownerId.toString());
+    }
+
+    const memberIds = Array.from(memberIdSet)
+        .map((value) => toObjectId(value))
+        .filter(Boolean);
+
+    if (memberIds.length > 0) {
+        await Users.updateMany(
+            { _id: { $in: memberIds } },
+            { $pull: { projects: projectId } }
+        );
+    }
+
+    await Projects.deleteOne({ _id: projectId });
+
+    const projectDirectory = path.join(PROJECT_UPLOADS_ROOT, projectId.toString());
+    if (fs.existsSync(projectDirectory)) {
+        try {
+            fs.rmSync(projectDirectory, { recursive: true, force: true });
+        } catch (err) {
+            console.warn('Unable to remove project directory:', projectDirectory, err.message);
+        }
+    }
+};
+
+const cascadeDeleteUser = async (userDoc) => {
+    if (!userDoc || !userDoc._id) {
+        return;
+    }
+
+    const userId = userDoc._id instanceof ObjectId ? userDoc._id : toObjectId(userDoc._id);
+    if (!userId) {
+        return;
+    }
+
+    const ownedProjects = await Projects.find({ ownerId: userId }).toArray();
+    for (const project of ownedProjects) {
+        await cascadeDeleteProject(project);
+    }
+
+    await Projects.updateMany(
+        { members: userId },
+        { $pull: { members: userId } }
+    );
+
+    await Projects.updateMany(
+        { checkedOutBy: userId },
+        { $set: { checkedOutBy: null, checkoutStatus: 'checked-in' } }
+    );
+
+    const userMessageDocs = await Messages.find({ userId }).toArray();
+    const messageIds = userMessageDocs.map((doc) => doc._id);
+    if (messageIds.length) {
+        await Projects.updateMany(
+            { activity: { $in: messageIds } },
+            { $pull: { activity: { $in: messageIds } } }
+        );
+        await Messages.deleteMany({ _id: { $in: messageIds } });
+    }
+
+    await DiscussionMessages.deleteMany({ userId });
+
+    await Users.updateMany(
+        {},
+        {
+            $pull: {
+                friends: userId,
+                pendingFriendRequests: userId,
+                outgoingFriendRequests: userId,
+            },
+        }
+    );
+
+    await Users.deleteOne({ _id: userId });
+};
 
 // DELETE Project (Delete Project)
 app.delete('/api/projects/:id', async (req, res) => {
@@ -1567,32 +2639,7 @@ app.delete('/api/projects/:id', async (req, res) => {
         const project = await Projects.findOne({ _id: projectId });
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        await Promise.all([
-            Messages.deleteMany({ projectId }),
-            DiscussionMessages.deleteMany({ projectId }),
-        ]);
-
-        const memberIdSet = new Set((project.members || []).map(id => id.toString()));
-        if (project.ownerId) memberIdSet.add(project.ownerId.toString());
-
-        const memberIds = Array.from(memberIdSet).map(toObjectId).filter(Boolean);
-        if (memberIds.length > 0) {
-            await Users.updateMany(
-                { _id: { $in: memberIds } },
-                { $pull: { projects: projectId } }
-            );
-        }
-
-        await Projects.deleteOne({ _id: projectId });
-
-        const projectDirectory = path.join(PROJECT_UPLOADS_ROOT, projectId.toString());
-        if (fs.existsSync(projectDirectory)) {
-            try {
-                fs.rmSync(projectDirectory, { recursive: true, force: true });
-            } catch (err) {
-                console.warn('Unable to remove project directory:', projectDirectory, err.message);
-            }
-        }
+        await cascadeDeleteProject(project);
 
         res.json({ success: true, message: 'Project deleted successfully' });
     } catch (error) {
@@ -1692,11 +2739,30 @@ try {
         projectId, userId: userObjectId, action: 'checked-in', message, time: new Date()
     });
 
+    const updatedFilesSnapshot = [
+        ...((project.files || []).map((file) => ({ ...file }))),
+        ...newFileRecords.map((file) => ({ ...file })),
+    ];
+
+    const historyEntry = {
+        _id: new ObjectId(),
+        version,
+        message,
+        createdAt: new Date(),
+        userId: userObjectId,
+        files: updatedFilesSnapshot,
+    };
+
     const updateOps = {
         $set: { checkoutStatus: 'checked-in', checkedOutBy: null, lastActivity: Date.now(), version },
-        $push: { activity: actId }
+        $push: {
+            activity: actId,
+            versionHistory: historyEntry,
+        },
     };
-    if (newFileRecords.length) updateOps.$push.files = { $each: newFileRecords };
+    if (newFileRecords.length) {
+        updateOps.$push.files = { $each: newFileRecords };
+    }
 
     await Projects.updateOne({ _id: projectId }, updateOps);
 
@@ -1710,6 +2776,105 @@ try {
 
     }
 );
+
+app.post('/api/projects/:id/versions/:versionId/rollback', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    const versionId = toObjectId(req.params.versionId);
+    const userObjectId = toObjectId(req.body.userId);
+
+    if (!projectId || !versionId || !userObjectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Project, version, and user identifiers are required for rollback',
+        });
+    }
+
+    try {
+        const [project, user] = await Promise.all([
+            Projects.findOne({ _id: projectId }),
+            findUserById(userObjectId, 'role'),
+        ]);
+
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        const isOwner = project.ownerId && project.ownerId.toString() === userObjectId.toString();
+        const isAdmin = (user?.role || '').toLowerCase() === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the project owner or an administrator can perform a rollback',
+            });
+        }
+
+        const historyEntry = (project.versionHistory || []).find(
+            (entry) => entry?._id && entry._id.toString() === versionId.toString()
+        );
+
+        if (!historyEntry) {
+            return res.status(404).json({ success: false, message: 'Version history entry not found' });
+        }
+
+        const restoredFiles = (historyEntry.files || []).map((file) => {
+            const clone = { ...file };
+            if (!clone._id || !(clone._id instanceof ObjectId)) {
+                clone._id = toObjectId(clone._id) || new ObjectId();
+            }
+            if (clone.uploadedBy && !(clone.uploadedBy instanceof ObjectId)) {
+                clone.uploadedBy = toObjectId(clone.uploadedBy) || clone.uploadedBy;
+            }
+            return clone;
+        });
+
+        const rollbackMessage = `Rolled back to ${historyEntry.version}`;
+        const rollbackActivity = {
+            projectId,
+            userId: userObjectId,
+            action: 'rolled-back',
+            message: rollbackMessage,
+            time: new Date(),
+        };
+        const { insertedId: activityId } = await Messages.insertOne(rollbackActivity);
+
+        const rollbackHistoryEntry = {
+            _id: new ObjectId(),
+            version: historyEntry.version,
+            message: rollbackMessage,
+            createdAt: new Date(),
+            userId: userObjectId,
+            files: restoredFiles.map((file) => ({ ...file })),
+        };
+
+        await Projects.updateOne(
+            { _id: projectId },
+            {
+                $set: {
+                    files: restoredFiles,
+                    version: historyEntry.version,
+                    checkoutStatus: 'checked-in',
+                    checkedOutBy: null,
+                    lastActivity: Date.now(),
+                },
+                $push: {
+                    activity: activityId,
+                    versionHistory: rollbackHistoryEntry,
+                },
+            }
+        );
+
+        const populatedProject = await populateProjectDetail(projectId);
+        res.json({
+            success: true,
+            project: formatProjectDetail(populatedProject),
+            message: `Project rolled back to ${historyEntry.version}`,
+        });
+    } catch (error) {
+        console.error('Project rollback error:', error);
+        res.status(500).json({ success: false, message: 'Server error while rolling back project' });
+    }
+});
 
 app.post('/api/projects/:id/download', async (req, res) => {
     const projectId = toObjectId(req.params.id);
@@ -2028,93 +3193,58 @@ app.get('/api/projects/:id/files/:fileId/download', async (req, res) => {
 // ==============================
 
 app.get('/api/search', async (req, res) => {
-    const { term, type } = req.query;
+    const { term, type, limit } = req.query;
+
     if (!term || !type) {
         return res.status(400).json({ success: false, message: 'Search term and type are required' });
     }
 
-    const regex = new RegExp(term, 'i');
+    const parsedLimit = Number.parseInt(limit, 10);
+    const safeLimit = Number.isFinite(parsedLimit)
+        ? Math.min(Math.max(parsedLimit, 1), 100)
+        : DEFAULT_SEARCH_LIMIT;
 
     try {
-        if (type === 'projects') {
-            const projects = await Projects.find({
-                $or: [{ name: regex }, { tags: regex }, { type: regex }],
-            }).toArray();
-
-            const ownerIds = normalizeObjectIdArray(projects.map((project) => project.ownerId));
-            const ownerDocs = await fetchUsersByIds(ownerIds, 'username');
-            const ownerMap = docsToMapById(ownerDocs);
-
-            const formatted = projects.map((project) => ({
-                id: project._id.toString(),
-                name: project.name,
-                type: 'projects',
-                description: project.description || '',
-                imageUrl: buildPublicUrl(project.image),
-                owner: ownerMap.get(project.ownerId?.toString())?.username || 'unknown',
-            }));
-            return res.json({ success: true, results: formatted });
-        }
-
-        if (type === 'users') {
-            const users = await Users.find({
-                $or: [{ username: regex }, { fullName: regex }, { email: regex }],
-            }).toArray();
-
-            const formatted = users.map((user) => ({
-                id: user._id.toString(),
-                name: user.username,
-                type: 'users',
-                description: user.bio || user.email || '',
-            }));
-            return res.json({ success: true, results: formatted });
-        }
-
-        if (type === 'tags') {
-            const taggedProjects = await Projects.find({ tags: regex }).toArray();
-            const formatted = taggedProjects.map((project) => ({
-                id: project._id.toString(),
-                name: project.name,
-                type: 'projects',
-                description: project.description || '',
-                imageUrl: buildPublicUrl(project.image),
-            }));
-            return res.json({ success: true, results: formatted });
-        }
-
-        if (type === 'activity') {
-            const activities = await Messages.find({ action: 'checked-in', message: regex }).toArray();
-            const projectIds = normalizeObjectIdArray(activities.map((activity) => activity.projectId));
-            const userIds = normalizeObjectIdArray(activities.map((activity) => activity.userId));
-
-            const [projects, users] = await Promise.all([
-                projectIds.length ? Projects.find({ _id: { $in: projectIds } }).toArray() : [],
-                userIds.length ? fetchUsersByIds(userIds, 'username profileImage') : [],
-            ]);
-
-            const projectMap = docsToMapById(projects);
-            const userMap = docsToMapById(users);
-
-            const formatted = activities.map((activity) => {
-                const project = projectMap.get(activity.projectId?.toString());
-                return {
-                    id: activity._id.toString(),
-                    name: project?.name || 'Unknown project',
-                    type: 'activity',
-                    description: activity.message || '',
-                    projectId: project?._id?.toString(),
-                    projectImage: buildPublicUrl(project?.image || ''),
-                    user: mapUserPreview(userMap.get(activity.userId?.toString()) || activity.userId),
-                    time: activity.time ? new Date(activity.time).toLocaleString() : '',
-                };
-            });
-            return res.json({ success: true, results: formatted });
-        }
-
-        return res.status(400).json({ success: false, message: 'Unsupported search type' });
+        const results = await executeSearch(term, type, { limit: safeLimit });
+        res.json({ success: true, results });
     } catch (error) {
+        if (error.message === 'Unsupported search type') {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         console.error('Search error:', error);
         res.status(500).json({ success: false, message: 'Server error during search' });
+    }
+});
+
+app.get('/api/search/suggest', async (req, res) => {
+    const { term, types, limit } = req.query;
+
+    if (!term) {
+        return res.json({ success: true, suggestions: [] });
+    }
+
+    const parsedLimit = Number.parseInt(limit, 10);
+    const safeLimit = Number.isFinite(parsedLimit)
+        ? Math.min(Math.max(parsedLimit, 1), 30)
+        : 10;
+
+    const typeList = typeof types === 'string'
+        ? types
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter((entry) => entry)
+        : undefined;
+
+    try {
+        const suggestions = await executeSuggestions(term, typeList, {
+            limit: safeLimit,
+            limitPerType: Math.max(2, Math.ceil(safeLimit / ((typeList && typeList.length) || 4))),
+            threshold: DEFAULT_SUGGESTION_THRESHOLD,
+        });
+        res.json({ success: true, suggestions });
+    } catch (error) {
+        console.error('Search suggestion error:', error);
+        res.status(500).json({ success: false, message: 'Server error generating suggestions' });
     }
 });
 

@@ -36,7 +36,7 @@ const DiscussionBoard = ({
             Coordinate with collaborators and track important project notes.
           </p>
         </div>
-        {loading && <span className="discussion-board__loading">Loading…</span>}
+        {loading && <span className="discussion-board__loading">Loading...</span>}
       </header>
 
       {discussion.length === 0 && !loading && (
@@ -85,7 +85,7 @@ const DiscussionBoard = ({
             disabled={submitting || !message.trim()}
             className="discussion-board__submit"
           >
-            {submitting ? 'Posting…' : 'Post Message'}
+            {submitting ? 'Posting...' : 'Post Message'}
           </button>
         </form>
       )}

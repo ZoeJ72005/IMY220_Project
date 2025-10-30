@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './PendingRequestsCard.css';
+import { resolveProfileImage } from '../utils/avatar';
 
 const PendingRequestsCard = ({ user, onUserUpdate }) => {
   const [pending, setPending] = useState(user?.pendingFriendRequests || []);
@@ -59,7 +60,7 @@ const PendingRequestsCard = ({ user, onUserUpdate }) => {
           <li key={request.id} className="pending-requests__item">
             <div className="pending-requests__user">
               <img
-                src={request.profileImage || 'https://via.placeholder.com/48'}
+                src={resolveProfileImage(request.profileImage, request.id || request.username, 64)}
                 alt={request.username}
                 className="pending-requests__avatar"
               />

@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './EditProfile.css';
+import { resolveProfileImage } from '../utils/avatar';
+
+const IMAGE_MAX_SIZE_MB = 5;
+const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
 
 const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
   const [formData, setFormData] = useState({
@@ -10,6 +14,42 @@ const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
     website: profile.website || '',
   });
   const [errors, setErrors] = useState({});
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(profile.profileImage || '');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setFormData({
+      fullName: profile.fullName || '',
+      bio: profile.bio || '',
+      location: profile.location || '',
+      company: profile.company || '',
+      website: profile.website || '',
+    });
+    setImagePreview(profile.profileImage || '');
+    setImageFile(null);
+  }, [
+    profile.fullName,
+    profile.bio,
+    profile.location,
+    profile.company,
+    profile.website,
+    profile.profileImage,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const displayPreview = useMemo(
+    () => imagePreview || resolveProfileImage(profile.profileImage, profile.id || profile.username, 160),
+    [imagePreview, profile.profileImage, profile.id, profile.username]
+  );
 
   const validateForm = () => {
     const newErrors = {};
@@ -45,16 +85,99 @@ const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
     }
   };
 
+  const handleSelectedImage = (file) => {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({ ...prev, profileImage: 'Please upload a valid image file' }));
+      return;
+    }
+
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        profileImage: `Image must be smaller than ${IMAGE_MAX_SIZE_MB}MB.`,
+      }));
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, profileImage: '' }));
+
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleSelectedImage(file);
+    }
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      handleSelectedImage(file);
+    }
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleResetImage = () => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    setImagePreview(profile.profileImage || '');
+    setErrors((prev) => ({ ...prev, profileImage: '' }));
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (validateForm()) {
-      onSave(formData);
+    if (!validateForm()) {
+      return;
     }
+
+    const payload = new FormData();
+    payload.append('fullName', formData.fullName.trim());
+    payload.append('bio', formData.bio.trim());
+    payload.append('location', formData.location.trim());
+    payload.append('company', formData.company.trim());
+    payload.append('website', formData.website.trim());
+
+    if (imageFile) {
+      payload.append('profileImage', imageFile);
+    }
+
+    onSave(payload, { useFormData: true });
   };
 
   const focusInput = (targetId) => {
     const input = document.getElementById(targetId);
     input?.focus();
+  };
+
+  const handleSelectButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -69,6 +192,50 @@ const EditProfile = ({ profile, onSave, onCancel, errorMessage = '' }) => {
       </header>
 
       <form onSubmit={handleSubmit} className="edit-profile__form" noValidate>
+        <div className="edit-profile__group edit-profile__group--image">
+          <label className="edit-profile__label" htmlFor="edit-profile-image">
+            Profile image
+          </label>
+          <div
+            className={`edit-profile__dropzone ${isDragging ? 'edit-profile__dropzone--active' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              id="edit-profile-image"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="edit-profile__file-input"
+              onChange={handleImageChange}
+            />
+            <div className="edit-profile__dropzone-preview">
+              <img src={displayPreview} alt="Profile preview" className="edit-profile__preview-image" />
+            </div>
+            <div className="edit-profile__dropzone-actions">
+              <button
+                type="button"
+                onClick={handleSelectButtonClick}
+                className="edit-profile__button edit-profile__button--ghost edit-profile__button--sm"
+              >
+                Choose Image
+              </button>
+              {imageFile && (
+                <button
+                  type="button"
+                  onClick={handleResetImage}
+                  className="edit-profile__button edit-profile__button--danger edit-profile__button--sm"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <p className="edit-profile__hint">Drag &amp; drop or choose a file (max {IMAGE_MAX_SIZE_MB}MB).</p>
+          </div>
+          {errors.profileImage && <div className="edit-profile__error">{errors.profileImage}</div>}
+        </div>
+
         <div className="edit-profile__group">
           <label
             className="edit-profile__label"

@@ -267,7 +267,7 @@ const ProjectComponent = ({
             Download
           </button>
 
-          {isMember && project.checkoutStatus === 'checked-in' && (
+          {(isMember || isOwner) && project.checkoutStatus === 'checked-in' && (
             <button
               type="button"
               onClick={onCheckout}

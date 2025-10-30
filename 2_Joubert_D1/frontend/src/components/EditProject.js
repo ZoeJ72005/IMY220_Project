@@ -299,7 +299,7 @@ const EditProject = ({ project, currentUser, onSave, onCancel }) => {
             className="terminal-button edit-project__button edit-project__button--primary"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving…' : 'Save Changes'}
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
           </button>
             <button
             type="button"

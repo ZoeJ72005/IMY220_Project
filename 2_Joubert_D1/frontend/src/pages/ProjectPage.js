@@ -7,7 +7,9 @@ import MessagesComponent from '../components/MessagesComponent';
 import EditProject from '../components/EditProject';
 import DiscussionBoard from '../components/DiscussionBoard';
 
-const ProjectPage = ({ user, onLogout }) => {
+const PROJECT_TABS = ['overview', 'files', 'activity', 'history', 'insights', 'discussion'];
+
+const ProjectPage = ({ user, onLogout, theme, onToggleTheme }) => {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
@@ -25,6 +27,8 @@ const ProjectPage = ({ user, onLogout }) => {
   const [checkinFileInputKey, setCheckinFileInputKey] = useState(0);
   const [discussion, setDiscussion] = useState([]);
   const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackError, setRollbackError] = useState('');
 
   const fetchProject = useCallback(async () => {
     setLoading(true);
@@ -82,7 +86,7 @@ const ProjectPage = ({ user, onLogout }) => {
   }, [project?.version]);
 
   const isOwner = project?.owner?.id === user.id;
-  const isMember = project?.members?.some((member) => member.id === user.id);
+  const isMember = isOwner || project?.members?.some((member) => member.id === user.id);
   const isCheckedOutByUser =
     project?.checkoutStatus === 'checked-out' && project?.checkedOutBy?.id === user.id;
 
@@ -91,6 +95,343 @@ const ProjectPage = ({ user, onLogout }) => {
     const memberIds = new Set(project.members?.map((member) => member.id));
     return (user.friends || []).filter((friend) => !memberIds.has(friend.id));
   }, [project, user.friends]);
+
+  const canRollback = isOwner || user.role === 'admin';
+  const versionHistory = project?.versionHistory || [];
+
+  const activityStats = useMemo(() => {
+    if (!project?.activity || !project.activity.length) {
+      return [];
+    }
+    const counts = project.activity.reduce((acc, entry) => {
+      const action = entry.action || 'event';
+      acc[action] = (acc[action] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([action, count]) => ({ action, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [project?.activity]);
+
+  const maxStatCount = activityStats.length
+    ? Math.max(...activityStats.map((stat) => stat.count))
+    : 0;
+
+  const projectTabClass = (tab) => [
+    'px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out',
+    activeTab === tab
+      ? 'bg-terminal-text text-terminal-bg'
+      : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent',
+  ].join(' ');
+
+  const renderActiveTabContent = () => {
+    switch (activeTab) {
+      case 'files':
+        return (
+          <div className="animate-fade-in">
+            <FilesComponent
+              files={project.files}
+              canEdit={isMember && isCheckedOutByUser}
+              checkoutStatus={project.checkoutStatus}
+            />
+          </div>
+        );
+      case 'activity':
+        return (
+          <div className="animate-fade-in">
+            <MessagesComponent
+              projectId={project.id}
+              messages={project.activity || []}
+              currentUser={user}
+              canAddMessage={isMember}
+              onMessageAdded={handleMessageAdded}
+            />
+
+            {isMember && (
+              <div className="mt-8 space-y-3 border border-terminal-dim rounded-lg bg-terminal-input-bg/40 p-4">
+                <h4 className="text-sm text-terminal-accent flex items-center justify-between">
+                  &gt; CHECKIN_CHANGES
+                  {project.checkoutStatus === 'checked-in' && (
+                    <span className="text-terminal-warning text-xs">
+                      Project must be checked out before submitting a check-in.
+                    </span>
+                  )}
+                </h4>
+
+                <textarea
+                  className="terminal-input w-full text-sm p-2"
+                  rows="3"
+                  value={checkinForm.message}
+                  onChange={(event) =>
+                    setCheckinForm((prev) => ({ ...prev, message: event.target.value }))
+                  }
+                  placeholder="Describe your changes before checking in..."
+                  disabled={!isCheckedOutByUser}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-terminal-dim mb-1">UPDATED_VERSION</label>
+                    <input
+                      type="text"
+                      className="terminal-input text-sm p-2"
+                      value={checkinForm.version}
+                      onChange={(event) =>
+                        setCheckinForm((prev) => ({ ...prev, version: event.target.value }))
+                      }
+                      disabled={!isCheckedOutByUser}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-terminal-dim mb-1">
+                      UPLOAD_NEW_FILES (optional)
+                    </label>
+                    <input
+                      key={checkinFileInputKey}
+                      type="file"
+                      multiple
+                      className="terminal-input text-sm p-2"
+                      onChange={handleCheckinFilesChange}
+                      disabled={!isCheckedOutByUser}
+                    />
+                    {checkinForm.files.length > 0 && (
+                      <div className="text-[11px] text-terminal-dim mt-1">
+                        {checkinForm.files.length} file(s) selected
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCheckin}
+                  className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full"
+                  disabled={!isCheckedOutByUser}
+                >
+                  {isCheckedOutByUser ? 'COMMIT & CHECKIN' : 'CHECKED_OUT_BY_ANOTHER_MEMBER'}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case 'history':
+        return (
+          <div className="animate-fade-in">
+            {rollbackError && (
+              <div className="mb-3 border border-terminal-error text-terminal-error text-xs p-3">
+                ERROR: {rollbackError}
+              </div>
+            )}
+            {versionHistory.length === 0 ? (
+              <div className="text-sm text-terminal-dim">No version history captured yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {versionHistory.map((entry, index) => {
+                  const isCurrentVersion = index === 0 && entry.version === project.version;
+                  const timestamp = entry.createdAt
+                    ? new Date(entry.createdAt).toLocaleString()
+                    : 'Unknown date';
+                  return (
+                    <article
+                      key={entry.id}
+                      className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40 space-y-2"
+                    >
+                      <header className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h5 className="text-terminal-accent text-sm">&gt; {entry.version}</h5>
+                          <div className="text-[11px] text-terminal-dim">
+                            {timestamp} - {entry.user?.username || 'unknown'}
+                          </div>
+                        </div>
+                        {canRollback && !isCurrentVersion && (
+                          <button
+                            type="button"
+                            className="terminal-button text-[11px] px-3 py-1 bg-transparent text-terminal-accent border border-terminal-accent"
+                            disabled={rollbackLoading}
+                            onClick={() => handleRollback(entry.id, entry.version)}
+                          >
+                            {rollbackLoading ? 'ROLLBACK...' : 'ROLLBACK'}
+                          </button>
+                        )}
+                        {isCurrentVersion && (
+                          <span className="text-[10px] text-terminal-warning uppercase tracking-wide">
+                            Current version
+                          </span>
+                        )}
+                      </header>
+                      {entry.message && (
+                        <p className="text-sm text-terminal-text leading-relaxed">{entry.message}</p>
+                      )}
+                      <div className="text-[11px] text-terminal-dim">
+                        {entry.files?.length || 0} file(s) captured in this snapshot
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      case 'insights':
+        return (
+          <div className="animate-fade-in">
+            {activityStats.length === 0 ? (
+              <div className="text-sm text-terminal-dim">No recorded activity yet.</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Versions</div>
+                    <div className="text-terminal-text text-lg font-bold">{versionHistory.length}</div>
+                  </div>
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Check-ins</div>
+                    <div className="text-terminal-text text-lg font-bold">
+                      {activityStats.find((stat) => stat.action === 'checked-in')?.count || 0}
+                    </div>
+                  </div>
+                  <div className="border border-terminal-dim rounded-lg p-4 bg-terminal-input-bg/40">
+                    <div className="text-xs text-terminal-dim uppercase tracking-wide">Team Size</div>
+                    <div className="text-terminal-text text-lg font-bold">
+                      {project.members?.length || 0}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <h5 className="text-terminal-accent text-sm">&gt; ACTIVITY_BREAKDOWN</h5>
+                  {activityStats.map((stat) => {
+                    const percent = maxStatCount
+                      ? Math.max(6, (stat.count / maxStatCount) * 100)
+                      : 0;
+                    return (
+                      <div key={stat.action} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] text-terminal-text uppercase tracking-wide">
+                          <span>{stat.action}</span>
+                          <span>{stat.count}</span>
+                        </div>
+                        <div
+                          className="w-full h-2 rounded overflow-hidden"
+                          style={{ background: 'var(--terminal-border-dim)' }}
+                        >
+                          <div
+                            className="h-full"
+                            style={{
+                              width: `${percent}%`,
+                              background: 'var(--terminal-accent)',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'discussion':
+        return (
+          <div className="animate-fade-in">
+            <DiscussionBoard
+              discussion={discussion}
+              loading={discussionLoading}
+              canDiscuss={isMember}
+              onSendMessage={handleDiscussionPost}
+            />
+          </div>
+        );
+      case 'overview':
+      default:
+        return (
+          <div className="animate-fade-in">
+            <div className="flex flex-col lg:flex-row gap-6">
+              {project.imageUrl && (
+                <div className="max-w-xs flex-shrink-0">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={toggleImageModal}
+                    onKeyDown={(e) => e.key === 'Enter' && toggleImageModal()}
+                    className="cursor-pointer border border-terminal-border rounded overflow-hidden shadow-[0_0_15px_rgba(0,255,0,0.2)]"
+                  >
+                    <img
+                      src={project.imageUrl}
+                      alt={`${project.name} cover`}
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                  <p className="text-[11px] text-terminal-dim mt-2 text-center">Click to view full-size</p>
+                </div>
+              )}
+
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold text-terminal-text mb-2">{project.name}</h2>
+                  <p className="text-terminal-dim leading-relaxed">{project.description}</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-terminal-dim p-4 rounded">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">TYPE</span>
+                    <span className="text-terminal-text text-sm uppercase">
+                      {project.type?.replace('-', ' ') || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">VERSION</span>
+                    <span className="text-terminal-text text-sm">{project.version}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">STATUS</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.checkoutStatus === 'checked-out'
+                        ? `Checked out by ${project.checkedOutBy?.username || 'unknown'}`
+                        : 'Checked in'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">DOWNLOADS</span>
+                    <span className="text-terminal-text text-sm">{project.downloads}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">OWNER</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.owner?.username || 'unknown'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-terminal-dim tracking-wide">CREATED</span>
+                    <span className="text-terminal-text text-sm">
+                      {project.createdDate
+                        ? new Date(project.createdDate).toLocaleDateString()
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                {project.tags?.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm text-terminal-accent">&gt; LANGUAGES</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {project.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => handleTagNavigate(tag)}
+                          className="text-xs border border-terminal-dim text-terminal-text px-2 py-1 rounded hover:border-terminal-accent hover:text-terminal-accent transition-all duration-200"
+                          type="button"
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
 
   const updateProjectState = (updatedProject) => {
     setProject(updatedProject);
@@ -241,6 +582,41 @@ const ProjectPage = ({ user, onLogout }) => {
     }
   };
 
+  const handleRollback = async (versionId, label) => {
+    if (!canRollback || !versionId) {
+      return;
+    }
+
+    if (!window.confirm(`Rollback project to ${label}?`)) {
+      return;
+    }
+
+    setRollbackError('');
+    setRollbackLoading(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${project.id}/versions/${versionId}/rollback`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        updateProjectState(data.project);
+        alert(`Project rolled back to ${label}.`);
+        setActiveTab('history');
+      } else {
+        throw new Error(data.message || 'Rollback failed.');
+      }
+    } catch (rollbackErr) {
+      setRollbackError(rollbackErr.message || 'Unable to rollback to the selected version.');
+    } finally {
+      setRollbackLoading(false);
+    }
+  };
+
   const handleMessageAdded = (activity) => {
     setProject((prev) => ({
       ...prev,
@@ -329,7 +705,7 @@ const ProjectPage = ({ user, onLogout }) => {
   if (loading) {
     return (
       <div className="bg-terminal-bg min-h-screen">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
         <div className="flex items-center justify-center mt-32">
           <div className="text-terminal-text text-lg font-share-tech-mono">
             Loading project data<span className="cursor animate-blink">_</span>
@@ -342,7 +718,7 @@ const ProjectPage = ({ user, onLogout }) => {
   if (!project) {
     return (
       <div className="bg-terminal-bg min-h-screen">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
         <div className="flex items-center justify-center mt-32">
           <div className="text-terminal-error text-lg font-share-tech-mono">
             {error || 'Project not found.'}
@@ -354,7 +730,7 @@ const ProjectPage = ({ user, onLogout }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
 
       <main className="p-5 max-w-7xl mx-auto">
         {error && (
@@ -395,14 +771,10 @@ const ProjectPage = ({ user, onLogout }) => {
 
           <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.1)] min-h-[400px] flex flex-col">
             <div className="flex bg-terminal-dim border-b border-terminal-border">
-              {['overview', 'files', 'activity', 'discussion'].map((tab) => (
+              {PROJECT_TABS.map((tab) => (
                 <button
                   key={tab}
-                  className={`px-4 py-3 font-fira-code text-xs cursor-pointer border-r border-terminal-border transition-all duration-300 ease-in-out ${
-                    activeTab === tab
-                      ? 'bg-terminal-text text-terminal-bg'
-                      : 'bg-transparent text-terminal-text hover:bg-terminal-button-hover hover:text-terminal-accent'
-                  }`}
+                  className={projectTabClass(tab)}
                   onClick={() => setActiveTab(tab)}
                 >
                   &gt; {tab.toUpperCase()}
@@ -410,207 +782,7 @@ const ProjectPage = ({ user, onLogout }) => {
               ))}
             </div>
 
-            <div className="p-5 flex-1 relative">
-              <div
-                className={`transition-opacity duration-250 ${
-                  activeTab === 'overview' ? 'opacity-100 block' : 'opacity-0 hidden'
-                }`}
-              >
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {project.imageUrl && (
-                    <div className="max-w-xs flex-shrink-0">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={toggleImageModal}
-                        onKeyDown={(e) => e.key === 'Enter' && toggleImageModal()}
-                        className="cursor-pointer border border-terminal-border rounded overflow-hidden shadow-[0_0_15px_rgba(0,255,0,0.2)]"
-                      >
-                        <img
-                          src={project.imageUrl}
-                          alt={`${project.name} cover`}
-                          className="w-full h-48 object-cover"
-                        />
-                      </div>
-                      <p className="text-[11px] text-terminal-dim mt-2 text-center">
-                        Click to view full-size
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <h2 className="text-xl font-bold text-terminal-text mb-2">
-                        {project.name}
-                      </h2>
-                      <p className="text-terminal-dim leading-relaxed">{project.description}</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-terminal-dim p-4 rounded">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">TYPE</span>
-                        <span className="text-terminal-text text-sm uppercase">
-                          {project.type?.replace('-', ' ') || 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">VERSION</span>
-                        <span className="text-terminal-text text-sm">{project.version}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">STATUS</span>
-                        <span className="text-terminal-text text-sm">
-                          {project.checkoutStatus === 'checked-out'
-                            ? `Checked out by ${project.checkedOutBy?.username || 'unknown'}`
-                            : 'Checked in'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">DOWNLOADS</span>
-                        <span className="text-terminal-text text-sm">{project.downloads}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">OWNER</span>
-                        <span className="text-terminal-text text-sm">
-                          {project.owner?.username || 'unknown'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-terminal-dim tracking-wide">CREATED</span>
-                        <span className="text-terminal-text text-sm">
-                          {project.createdDate
-                            ? new Date(project.createdDate).toLocaleDateString()
-                            : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {project.tags?.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-sm text-terminal-accent">&gt; LANGUAGES</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {project.tags.map((tag) => (
-                            <button
-                              key={tag}
-                              onClick={() => handleTagNavigate(tag)}
-                              className="text-xs border border-terminal-dim text-terminal-text px-2 py-1 rounded hover:border-terminal-accent hover:text-terminal-accent transition-all duration-200"
-                              type="button"
-                            >
-                              #{tag}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`transition-opacity duration-250 ${
-                  activeTab === 'files' ? 'opacity-100 block' : 'opacity-0 hidden'
-                }`}
-              >
-                <FilesComponent
-                  files={project.files}
-                  canEdit={isMember && isCheckedOutByUser}
-                  checkoutStatus={project.checkoutStatus}
-                />
-              </div>
-
-              <div
-                className={`transition-opacity duration-250 ${
-                  activeTab === 'activity' ? 'opacity-100 block' : 'opacity-0 hidden'
-                }`}
-              >
-                <MessagesComponent
-                  projectId={project.id}
-                  messages={project.activity || []}
-                  currentUser={user}
-                  canAddMessage={isMember}
-                  onMessageAdded={handleMessageAdded}
-                />
-
-                {isMember && (
-                  <div className="mt-8 space-y-3 border border-terminal-dim rounded-lg bg-terminal-input-bg/40 p-4">
-                    <h4 className="text-sm text-terminal-accent flex items-center justify-between">
-                      &gt; CHECKIN_CHANGES
-                      {project.checkoutStatus === 'checked-in' && (
-                        <span className="text-terminal-warning text-xs">
-                          Project must be checked out before submitting a check-in.
-                        </span>
-                      )}
-                    </h4>
-
-                    <textarea
-                      className="terminal-input w-full text-sm p-2"
-                      rows="3"
-                      value={checkinForm.message}
-                      onChange={(event) =>
-                        setCheckinForm((prev) => ({ ...prev, message: event.target.value }))
-                      }
-                      placeholder="Describe your changes before checking in..."
-                      disabled={!isCheckedOutByUser}
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="flex flex-col">
-                        <label className="text-xs text-terminal-dim mb-1">UPDATED_VERSION</label>
-                        <input
-                          type="text"
-                          className="terminal-input text-sm p-2"
-                          value={checkinForm.version}
-                          onChange={(event) =>
-                            setCheckinForm((prev) => ({ ...prev, version: event.target.value }))
-                          }
-                          disabled={!isCheckedOutByUser}
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <label className="text-xs text-terminal-dim mb-1">
-                          UPLOAD_NEW_FILES (optional)
-                        </label>
-                        <input
-                          key={checkinFileInputKey}
-                          type="file"
-                          multiple
-                          className="terminal-input text-sm p-2"
-                          onChange={handleCheckinFilesChange}
-                          disabled={!isCheckedOutByUser}
-                        />
-                        {checkinForm.files.length > 0 && (
-                          <div className="text-[11px] text-terminal-dim mt-1">
-                            {checkinForm.files.length} file(s) selected
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleCheckin}
-                      className="terminal-button text-sm px-4 py-2 bg-transparent text-terminal-accent border border-terminal-accent w-full"
-                      disabled={!isCheckedOutByUser}
-                    >
-                      {isCheckedOutByUser ? 'COMMIT & CHECKIN' : 'CHECKED_OUT_BY_ANOTHER_MEMBER'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div
-                className={`transition-opacity duration-250 ${
-                  activeTab === 'discussion' ? 'opacity-100 block' : 'opacity-0 hidden'
-                }`}
-              >
-                <DiscussionBoard
-                  discussion={discussion}
-                  loading={discussionLoading}
-                  canDiscuss={isMember}
-                  onSendMessage={handleDiscussionPost}
-                />
-              </div>
-            </div>
+            <div className="p-5 flex-1 relative">{renderActiveTabContent()}</div>
           </div>
         </div>
       </main>

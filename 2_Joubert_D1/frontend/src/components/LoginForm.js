@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import './LoginForm.css';
 
 const LoginForm = ({ onLogin }) => {
@@ -144,7 +144,7 @@ const LoginForm = ({ onLogin }) => {
         </div>
 
         <button type="submit" className="login-form__submit" disabled={isLoading}>
-          {isLoading ? 'Accessing…' : 'Log In'}
+          {isLoading ? 'Accessing...' : 'Log In'}
         </button>
       </form>
 
@@ -156,4 +156,6 @@ const LoginForm = ({ onLogin }) => {
 };
 
 export default LoginForm;
+
+
 

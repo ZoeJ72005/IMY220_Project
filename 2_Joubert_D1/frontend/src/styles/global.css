@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
 
-:root {
+:root[data-theme='dark'] {
   /* A darker, more modern terminal background */
   --terminal-bg: #0d1117;
   /* A secondary background for cards, inputs, etc. */
@@ -29,6 +29,20 @@
   --font-secondary: 'Share Tech Mono', monospace;
 }
 
+:root[data-theme='light'] {
+  --terminal-bg: #f7f9fc;
+  --terminal-bg-secondary: #ffffff;
+  --terminal-text-primary: #1f2933;
+  --terminal-text-secondary: #52606d;
+  --terminal-accent: #1f7a8c;
+  --terminal-accent-hover: #2390a6;
+  --terminal-accent-rgb: 31, 122, 140;
+  --terminal-border-primary: #d2d6dc;
+  --terminal-border-dim: #e4e7eb;
+  --terminal-error: #c53030;
+  --terminal-warning: #d69e2e;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -45,6 +59,12 @@ body {
 
 .app {
   min-height: 100vh;
+  background-color: var(--terminal-bg);
+}
+.app--light {
+  background-color: var(--terminal-bg);
+}
+.app--dark {
   background-color: var(--terminal-bg);
 }
 

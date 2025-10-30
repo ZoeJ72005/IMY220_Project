@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import './ProfileComponent.css';
+import { resolveProfileImage } from '../utils/avatar';
 
 const ProfileComponent = ({
   profile,
@@ -14,6 +15,11 @@ const ProfileComponent = ({
   const relation = profile?.relation || (isOwnProfile ? 'self' : 'friend');
   const isRestricted = relation === 'restricted';
   const friendCount = profile?.friendCount ?? profile?.friends?.length ?? 0;
+
+  const avatarUrl = useMemo(
+    () => resolveProfileImage(profile?.profileImage, profile?.id || profile?.username, 120),
+    [profile?.profileImage, profile?.id, profile?.username]
+  );
 
   const formatDate = (date) => {
     if (date instanceof Date) {
@@ -92,17 +98,14 @@ const ProfileComponent = ({
     <section className="profile-component">
       <header className="profile-component__header">
         <div className="profile-component__avatar-wrapper">
-          <img
-            src={profile.profileImage || 'https://via.placeholder.com/120'}
-            alt={`${profile.username} profile`}
-            className="profile-component__avatar"
-          />
+          <img src={avatarUrl} alt={`${profile.username} profile`} className="profile-component__avatar" />
           <span className="profile-component__status-indicator" aria-hidden="true" />
         </div>
         <div className="profile-component__headline">
           <h2 className="profile-component__username">
             &gt; {profile.username}
             <span className="profile-component__cursor">_</span>
+            {profile.verified && <span className="profile-component__badge">VERIFIED</span>}
           </h2>
           {profile.fullName && <p className="profile-component__name">{profile.fullName}</p>}
           <p className="profile-component__subtext">Joined: {formatDate(profile.joinDate)}</p>

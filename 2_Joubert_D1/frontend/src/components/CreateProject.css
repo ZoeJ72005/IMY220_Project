@@ -198,6 +198,121 @@
   border-color: var(--terminal-accent-hover);
 }
 
+.project-form__grid--uploads {
+  align-items: start;
+}
+
+.project-form__dropzone {
+  position: relative;
+  border: 1px dashed var(--terminal-border-dim);
+  border-radius: 10px;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.project-form__dropzone--files {
+  min-height: 160px;
+}
+
+.project-form__dropzone--active {
+  border-color: var(--terminal-accent);
+  background: rgba(var(--terminal-accent-rgb), 0.08);
+  transform: translateY(-2px);
+}
+
+.project-form__dropzone-content {
+  font-size: 0.75rem;
+  color: var(--terminal-text-secondary);
+}
+
+.project-form__preview-image {
+  max-width: 200px;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid var(--terminal-border-dim);
+  object-fit: cover;
+}
+
+.project-form__button {
+  border: 1px solid var(--terminal-border-primary);
+  background: transparent;
+  color: var(--terminal-text-secondary);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  padding: 0.45rem 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.project-form__button:hover {
+  border-color: var(--terminal-accent);
+  color: var(--terminal-accent);
+}
+
+.project-form__tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.project-form__tag-suggestion {
+  border: 1px solid var(--terminal-border-dim);
+  background: transparent;
+  color: var(--terminal-text-secondary);
+  font-size: 0.65rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.project-form__tag-suggestion:hover {
+  border-color: var(--terminal-accent);
+  color: var(--terminal-accent);
+  background: rgba(var(--terminal-accent-rgb), 0.12);
+}
+
+.project-form__file-remove {
+  border: 1px solid var(--terminal-border-dim);
+  background: transparent;
+  color: var(--terminal-text-secondary);
+  font-size: 0.65rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.project-form__file-remove:hover {
+  border-color: var(--terminal-error);
+  color: var(--terminal-error);
+}
+
+.project-form__input--file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.project-form__button--ghost {
+  border-color: var(--terminal-border-dim);
+}
+
+.project-form__button--ghost:hover {
+  border-color: var(--terminal-accent);
+}
+
 .project-form__submit:disabled {
   cursor: progress;
   opacity: 0.7;

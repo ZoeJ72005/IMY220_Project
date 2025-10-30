@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './SearchInput.css';
 
@@ -6,6 +6,9 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('projects');
   const [searchResults, setSearchResults] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,7 +27,52 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
     }
 
     setSearchResults([]);
+    setSuggestions([]);
+    setSuggestError('');
   }, [location.search]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSuggestions([]);
+      setIsSuggesting(false);
+      setSuggestError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setIsSuggesting(true);
+      setSuggestError('');
+      try {
+        const params = new URLSearchParams({
+          term: searchTerm.trim(),
+          types: searchType,
+        });
+        const response = await fetch(`/api/search/suggest?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setSuggestions(data.suggestions || []);
+        } else {
+          setSuggestions([]);
+          setSuggestError(data.message || 'Unable to load suggestions.');
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setSuggestions([]);
+          setSuggestError('Network error while loading suggestions.');
+        }
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 220);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [searchTerm, searchType]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -43,6 +91,7 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
         `/search?term=${encodeURIComponent(trimmedTerm)}&type=${encodeURIComponent(searchType)}`
       );
     }
+    setSuggestions([]);
   };
 
   const fetchSearch = async (term, type) => {
@@ -67,6 +116,13 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
   const handleChange = (event) => {
     setSearchTerm(event.target.value);
   };
+
+  const activeList = useMemo(() => {
+    if (suggestions.length > 0) {
+      return suggestions;
+    }
+    return searchResults;
+  }, [suggestions, searchResults]);
 
   return (
     <div className="search-input">
@@ -107,13 +163,22 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
         </div>
       </form>
 
-      {searchResults.length > 0 && (
+      {isSuggesting && (
+        <div className="search-input__suggestion-status">&gt; Fetching suggestions...</div>
+      )}
+
+      {suggestError && (
+        <div className="search-input__suggestion-error">ERROR: {suggestError}</div>
+      )}
+
+      {activeList.length > 0 && (
         <div className="search-input__results" role="listbox">
           <div className="search-input__results-header">
-            &gt; {searchResults.length} results found
+            &gt; {activeList.length}{' '}
+            {suggestions.length > 0 ? 'suggestions' : 'results'} found
           </div>
           <div className="search-input__results-body">
-            {searchResults.map((result) => {
+            {activeList.map((result) => {
               const isUser = result.type === 'users';
               const isActivity = result.type === 'activity';
               const linkTarget = isUser
@@ -145,7 +210,12 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
                   {isActivity && result.user && (
                     <span className="search-input__result-meta">
                       by {result.user.username}
-                      {result.time && ` • ${result.time}`}
+                      {result.time && ` - ${result.time}`}
+                    </span>
+                  )}
+                  {result.score !== undefined && (
+                    <span className="search-input__result-score">
+                      relevance {(result.score * 100).toFixed(0)}%
                     </span>
                   )}
                 </Link>
@@ -159,3 +229,6 @@ const SearchInput = ({ onSearch, placeholder = 'search_terminal...' }) => {
 };
 
 export default SearchInput;
+
+
+

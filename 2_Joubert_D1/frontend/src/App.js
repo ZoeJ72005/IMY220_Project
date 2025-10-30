@@ -7,9 +7,13 @@ import ProjectPage from './pages/ProjectPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import AdminDashboard from './pages/AdminDashboard';
 
+const THEME_STORAGE_KEY = 'terminal_theme';
+const USER_STORAGE_KEY = 'terminal_user';
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || 'dark');
 
   const enrichUser = (userData = {}) => ({
     ...userData,
@@ -20,7 +24,7 @@ function App() {
   });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('terminal_user');
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(enrichUser(parsedUser));
@@ -28,10 +32,15 @@ function App() {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
   const persistUser = (userData) => {
     const enriched = enrichUser(userData);
     setUser(enriched);
-    localStorage.setItem('terminal_user', JSON.stringify(enriched));
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(enriched));
   };
 
   const handleLogin = (userData) => {
@@ -44,7 +53,11 @@ function App() {
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('terminal_user');
+    localStorage.removeItem(USER_STORAGE_KEY);
+  };
+
+  const handleThemeToggle = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   if (loading) {
@@ -58,50 +71,72 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app app--${theme}`}>
       <Routes>
-        <Route 
-          path="/" 
-          element={
-            user ? <Navigate to="/home" replace /> : <SplashPage onLogin={handleLogin} />
-          } 
+        <Route
+          path="/"
+          element={user ? <Navigate to="/home" replace /> : <SplashPage onLogin={handleLogin} />}
         />
-        <Route 
-          path="/home" 
+        <Route
+          path="/home"
           element={
             user ? (
               <HomePage
                 user={user}
                 onLogout={handleLogout}
                 onUserUpdate={handleUserUpdate}
+                theme={theme}
+                onToggleTheme={handleThemeToggle}
               />
             ) : (
               <Navigate to="/" replace />
             )
-          } 
+          }
         />
-        <Route 
-          path="/profile/:userId" 
+        <Route
+          path="/profile/:userId"
           element={
             user ? (
-              <ProfilePage 
-                user={user} 
-                onLogout={handleLogout} 
-                onUserUpdate={handleUserUpdate} 
+              <ProfilePage
+                user={user}
+                onLogout={handleLogout}
+                onUserUpdate={handleUserUpdate}
+                theme={theme}
+                onToggleTheme={handleThemeToggle}
               />
-            ) : <Navigate to="/" replace />
-          } 
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
-        <Route 
-          path="/project/:projectId" 
+        <Route
+          path="/project/:projectId"
           element={
-            user ? <ProjectPage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
-          } 
+            user ? (
+              <ProjectPage
+                user={user}
+                onLogout={handleLogout}
+                theme={theme}
+                onToggleTheme={handleThemeToggle}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
-        <Route 
-          path="/search" 
+        <Route
+          path="/search"
           element={
-            user ? <SearchResultsPage user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />
+            user ? (
+              <SearchResultsPage
+                user={user}
+                onLogout={handleLogout}
+                theme={theme}
+                onToggleTheme={handleThemeToggle}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
         <Route
@@ -113,6 +148,8 @@ function App() {
                   user={user}
                   onLogout={handleLogout}
                   onUserUpdate={handleUserUpdate}
+                  theme={theme}
+                  onToggleTheme={handleThemeToggle}
                 />
               ) : (
                 <Navigate to="/home" replace />

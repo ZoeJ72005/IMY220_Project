@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 
-const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
+const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {}, theme, onToggleTheme }) => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -10,7 +10,40 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingUserId, setUpdatingUserId] = useState('');
+  const [adminMessage, setAdminMessage] = useState('');
   const isAdmin = user?.role === 'admin';
+
+  const requestJson = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      // ignore JSON parse errors; data stays as {}
+    }
+
+    const successFlag = data?.success;
+    if (!response.ok || successFlag === false) {
+      const error = new Error(data?.message || `Request failed (${response.status})`);
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
+
+    return data;
+  };
+
+  const refetchUsers = async () => {
+    const data = await requestJson(`/api/admin/users?adminId=${user.id}`);
+    setUsers(data.users);
+    return data;
+  };
+
+  const refetchProjects = async () => {
+    const data = await requestJson(`/api/admin/projects?adminId=${user.id}`);
+    setProjects(data.projects);
+    return data;
+  };
 
   useEffect(() => {
     if (!isAdmin) {
@@ -21,27 +54,20 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
       setLoading(true);
       setError('');
       try {
-        const [dashboardRes, usersRes, projectsRes, typesRes] = await Promise.all([
-          fetch(`/api/admin/dashboard?adminId=${user.id}`),
-          fetch(`/api/admin/users?adminId=${user.id}`),
-          fetch(`/api/admin/projects?adminId=${user.id}`),
-          fetch('/api/project-types'),
-        ]);
-
         const [dashboardData, usersData, projectsData, typesData] = await Promise.all([
-          dashboardRes.json(),
-          usersRes.json(),
-          projectsRes.json(),
-          typesRes.json(),
+          requestJson(`/api/admin/dashboard?adminId=${user.id}`),
+          requestJson(`/api/admin/users?adminId=${user.id}`),
+          requestJson(`/api/admin/projects?adminId=${user.id}`),
+          requestJson('/api/project-types'),
         ]);
 
-        if (dashboardData.success) setStats(dashboardData.stats);
-        if (usersData.success) setUsers(usersData.users);
-        if (projectsData.success) setProjects(projectsData.projects);
-        if (typesData.success) setProjectTypes(typesData.types);
+        setStats(dashboardData.stats);
+        setUsers(usersData.users);
+        setProjects(projectsData.projects);
+        setProjectTypes(typesData.types);
       } catch (loadError) {
         console.error('Admin dashboard load error:', loadError);
-        setError('Unable to load admin data.');
+        setError(loadError.message || 'Unable to load admin data.');
       } finally {
         setLoading(false);
       }
@@ -98,26 +124,29 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
     const nextRole = adminUser.role === 'admin' ? 'user' : 'admin';
     setUpdatingUserId(adminUser.id);
     try {
-      const response = await fetch(`/api/admin/users/${adminUser.id}/role`, {
+      const data = await requestJson(`/api/admin/users/${adminUser.id}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId: user.id, role: nextRole }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setUsers((previous) =>
-          previous.map((item) => (item.id === data.user.id ? data.user : item))
-        );
+      await refetchUsers();
 
-        if (data.user.id === user.id) {
-          onUserUpdate({ ...user, role: data.user.role });
-        }
-      } else {
-        alert(data.message || 'Unable to update user role.');
+      if (data.user.id === user.id) {
+        onUserUpdate({ ...user, role: data.user.role });
       }
+      setAdminMessage(
+        `User "${data.user.username}" role updated to ${data.user.role.toUpperCase()}.`
+      );
     } catch (updateError) {
-      alert('Network error while updating user role.');
+      if (updateError.status === 404) {
+        await refetchUsers();
+        setAdminMessage(
+          `User "${adminUser.username}" could not be found and has been removed from the list.`
+        );
+      } else {
+        alert(updateError.message || 'Unable to update user role.');
+      }
     } finally {
       setUpdatingUserId('');
     }
@@ -127,10 +156,188 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
     return adminUser.role === 'admin' ? count + 1 : count;
   }, 0);
 
+  const promptField = (label, defaultValue = '') => {
+    const result = window.prompt(label, defaultValue ?? '');
+    if (result === null) {
+      throw new Error('USER_CANCELLED');
+    }
+    return result.trim();
+  };
+
+  const handleProjectEdit = async (targetProject) => {
+    try {
+      let currentDetails = {
+        name: targetProject.name,
+        description: targetProject.description || '',
+        type: targetProject.type || '',
+        version: targetProject.version || '',
+        tags: targetProject.tags || [],
+      };
+
+      try {
+        const detailResponse = await fetch(`/api/projects/${targetProject.id}`);
+        const detailData = await detailResponse.json();
+        if (detailData.success && detailData.project) {
+          currentDetails = {
+            name: detailData.project.name,
+            description: detailData.project.description || '',
+            type: detailData.project.type || '',
+            version: detailData.project.version || '',
+            tags: detailData.project.tags || [],
+          };
+        }
+      } catch (detailError) {
+        console.warn('Unable to fetch project details for admin edit:', detailError);
+      }
+
+      const name = promptField('Project name', currentDetails.name);
+      const description = promptField('Project description', currentDetails.description);
+      const type = promptField('Project type', currentDetails.type);
+      const version = promptField('Project version', currentDetails.version);
+      const tagsInput = promptField(
+        'Project tags (comma separated)',
+        (currentDetails.tags || []).join(', ')
+      );
+
+      const data = await requestJson(`/api/admin/projects/${targetProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminId: user.id,
+          name,
+          description,
+          type,
+          version,
+          tags: tagsInput,
+        }),
+      });
+
+      await refetchProjects();
+      setAdminMessage(`Project "${data.project.name}" updated successfully.`);
+    } catch (updateError) {
+      if (updateError.message !== 'USER_CANCELLED') {
+        if (updateError.status === 404) {
+          await refetchProjects();
+          setAdminMessage(
+            `Project "${targetProject.name}" is no longer available and has been removed from the list.`
+          );
+        } else {
+          alert(updateError.message || 'Unable to update project.');
+        }
+      }
+    }
+  };
+
+  const handleProjectDelete = async (targetProject) => {
+    if (!window.confirm(`Delete project "${targetProject.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await requestJson(`/api/admin/projects/${targetProject.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: user.id }),
+      });
+      await refetchProjects();
+      setAdminMessage(`Project "${targetProject.name}" deleted.`);
+    } catch (deleteError) {
+      if (deleteError.status === 404) {
+        await refetchProjects();
+        setAdminMessage(
+          `Project "${targetProject.name}" was already removed. The list has been refreshed.`
+        );
+      } else {
+        alert(deleteError.message || 'Unable to delete project.');
+      }
+    }
+  };
+
+  const handleUserEdit = async (targetUser) => {
+    try {
+      const username = promptField('Username', targetUser.username);
+      const email = promptField('Email', targetUser.email);
+      const fullName = promptField('Full name', targetUser.fullName || '');
+      const bio = promptField('Bio', targetUser.bio || '');
+
+      const data = await requestJson(`/api/admin/users/${targetUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminId: user.id,
+          username,
+          email,
+          fullName,
+          bio,
+        }),
+      });
+
+      await refetchUsers();
+      setAdminMessage(`User "${data.user.username}" updated.`);
+    } catch (userError) {
+      if (userError.message !== 'USER_CANCELLED') {
+        if (userError.status === 404) {
+          await refetchUsers();
+          setAdminMessage(
+            `User "${targetUser.username}" could not be found and was removed from the list.`
+          );
+        } else {
+          alert(userError.message || 'Unable to update user.');
+        }
+      }
+    }
+  };
+
+  const handleUserDelete = async (targetUser) => {
+    if (!window.confirm(`Delete user "${targetUser.username}" and associated data?`)) {
+      return;
+    }
+
+    try {
+      await requestJson(`/api/admin/users/${targetUser.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: user.id }),
+      });
+      await refetchUsers();
+      setAdminMessage(`User "${targetUser.username}" deleted.`);
+    } catch (deleteError) {
+      if (deleteError.status === 404) {
+        await refetchUsers();
+        setAdminMessage(
+          `User "${targetUser.username}" no longer exists and has been removed from the list.`
+        );
+      } else {
+        alert(deleteError.message || 'Unable to delete user.');
+      }
+    }
+  };
+
+  const handleVerifyUser = async (targetUser) => {
+    try {
+      const data = await requestJson(`/api/admin/users/${targetUser.id}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: user.id }),
+      });
+      await refetchUsers();
+      setAdminMessage(`User "${targetUser.username}" verified.`);
+    } catch (verifyError) {
+      if (verifyError.status === 404) {
+        await refetchUsers();
+        setAdminMessage(
+          `User "${targetUser.username}" could not be found and was removed from the list.`
+        );
+      } else {
+        alert(verifyError.message || 'Unable to verify user.');
+      }
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="bg-terminal-bg min-h-screen">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
         <div className="flex items-center justify-center mt-32 text-terminal-error font-fira-code">
           Access denied. Administrator privileges required.
         </div>
@@ -140,7 +347,7 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <main className="p-5 max-w-7xl mx-auto font-fira-code space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl text-terminal-accent">
@@ -152,6 +359,19 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
         {error && (
           <div className="border border-terminal-error text-terminal-error text-sm p-3">
             ERROR: {error}
+          </div>
+        )}
+
+        {adminMessage && (
+          <div className="border border-terminal-border text-terminal-text text-xs p-3 bg-terminal-input-bg/40 flex items-center justify-between">
+            <span>{adminMessage}</span>
+            <button
+              type="button"
+              className="terminal-button text-[10px] px-2 py-1 bg-transparent text-terminal-text border border-terminal-border"
+              onClick={() => setAdminMessage('')}
+            >
+              DISMISS
+            </button>
           </div>
         )}
 
@@ -214,6 +434,7 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
                   <th className="text-left py-2 pr-4">Username</th>
                   <th className="text-left py-2 pr-4">Email</th>
                   <th className="text-left py-2 pr-4">Role</th>
+                  <th className="text-left py-2 pr-4">Verified</th>
                   <th className="text-left py-2 pr-4">Friends</th>
                   <th className="text-left py-2 pr-4">Projects</th>
                   <th className="text-left py-2 pr-4">Actions</th>
@@ -225,20 +446,46 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
                     <td className="py-2 pr-4">{adminUser.username}</td>
                     <td className="py-2 pr-4 text-terminal-dim">{adminUser.email}</td>
                     <td className="py-2 pr-4 uppercase">{adminUser.role}</td>
+                    <td className="py-2 pr-4">{adminUser.verified ? 'Yes' : 'No'}</td>
                     <td className="py-2 pr-4">{adminUser.friends}</td>
                     <td className="py-2 pr-4">{adminUser.projects}</td>
                     <td className="py-2 pr-4">
-                      <button
-                        type="button"
-                        disabled={
-                          updatingUserId === adminUser.id ||
-                          (adminUser.role === 'admin' && adminCount <= 1 && adminUser.id === user.id)
-                        }
-                        onClick={() => handleToggleRole(adminUser)}
-                        className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-accent text-terminal-accent disabled:border-terminal-dim disabled:text-terminal-dim"
-                      >
-                        {adminUser.role === 'admin' ? 'Demote' : 'Promote'}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            updatingUserId === adminUser.id ||
+                            (adminUser.role === 'admin' && adminCount <= 1 && adminUser.id === user.id)
+                          }
+                          onClick={() => handleToggleRole(adminUser)}
+                          className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-accent text-terminal-accent disabled:border-terminal-dim disabled:text-terminal-dim"
+                        >
+                          {adminUser.role === 'admin' ? 'Demote' : 'Promote'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUserEdit(adminUser)}
+                          className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-border text-terminal-text"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUserDelete(adminUser)}
+                          className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-error text-terminal-error"
+                        >
+                          Delete
+                        </button>
+                        {!adminUser.verified && (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyUser(adminUser)}
+                            className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-accent text-terminal-accent"
+                          >
+                            Verify
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -258,6 +505,7 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
                   <th className="text-left py-2 pr-4">Type</th>
                   <th className="text-left py-2 pr-4">Members</th>
                   <th className="text-left py-2 pr-4">Downloads</th>
+                  <th className="text-left py-2 pr-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,6 +516,24 @@ const AdminDashboard = ({ user, onLogout, onUserUpdate = () => {} }) => {
                     <td className="py-2 pr-4 uppercase">{adminProject.type}</td>
                     <td className="py-2 pr-4">{adminProject.members}</td>
                     <td className="py-2 pr-4">{adminProject.downloads}</td>
+                    <td className="py-2 pr-4">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleProjectEdit(adminProject)}
+                          className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-border text-terminal-text"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleProjectDelete(adminProject)}
+                          className="terminal-button text-[10px] px-3 py-1 bg-transparent border border-terminal-error text-terminal-error"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

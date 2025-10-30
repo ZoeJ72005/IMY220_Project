@@ -58,6 +58,19 @@
   margin: 0;
 }
 
+.profile-component__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--terminal-accent);
+  border: 1px solid rgba(0, 255, 0, 0.4);
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(var(--terminal-accent-rgb), 0.1);
+}
+
 .profile-component__cursor {
   font-size: 1.1rem;
   animation: blink 1s infinite;

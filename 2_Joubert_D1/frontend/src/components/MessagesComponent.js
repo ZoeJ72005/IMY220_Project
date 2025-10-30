@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './MessagesComponent.css';
 
@@ -102,10 +102,10 @@ const MessagesComponent = ({
             rows="3"
             value={messageText}
             onChange={(event) => setMessageText(event.target.value)}
-            placeholder="Write a short summary of what changed…"
+            placeholder="Write a short summary of what changed..."
           />
           <button type="submit" className="project-messages__submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Posting…' : 'Post Message'}
+            {isSubmitting ? 'Posting...' : 'Post Message'}
           </button>
         </form>
       )}
@@ -114,3 +114,5 @@ const MessagesComponent = ({
 };
 
 export default MessagesComponent;
+
+

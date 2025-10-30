@@ -5,7 +5,7 @@ import Feed from '../components/Feed';
 import PendingRequestsCard from '../components/PendingRequestsCard';
 
 
-const HomePage = ({ user, onLogout, onUserUpdate }) => {
+const HomePage = ({ user, onLogout, onUserUpdate, theme, onToggleTheme }) => {
   const [feedType, setFeedType] = useState('local'); // 'local' or 'global'
   const navigate = useNavigate();
   const feedRef = useRef(null);
@@ -39,7 +39,7 @@ const HomePage = ({ user, onLogout, onUserUpdate }) => {
 
   return (
     <div className="min-h-screen bg-terminal-bg">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       
       <main className="p-5 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">

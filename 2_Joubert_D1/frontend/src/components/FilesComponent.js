@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React, { useState } from 'react';
 import './FilesComponent.css';
 
 const formatBytes = (bytes) => {
@@ -13,12 +13,104 @@ const formatBytes = (bytes) => {
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 };
 
+const INLINE_TEXT_MIME_TYPES = new Set([
+  'text/plain',
+  'text/html',
+  'text/css',
+  'text/javascript',
+  'application/javascript',
+  'application/json',
+  'application/xml',
+  'text/markdown',
+  'application/x-sh',
+  'application/x-yaml',
+]);
+
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'];
+const TEXT_EXTENSIONS = ['txt', 'md', 'json', 'js', 'jsx', 'ts', 'tsx', 'py', 'rb', 'java', 'cs', 'go', 'rs', 'html', 'css', 'scss', 'less', 'yml', 'yaml', 'sh', 'sql'];
+
+const getExtension = (filename = '') => {
+  if (!filename) return '';
+  const clean = filename.toLowerCase();
+  if (clean === 'dockerfile') {
+    return 'dockerfile';
+  }
+  const parts = clean.split('.');
+  return parts.length > 1 ? parts.pop() : '';
+};
+
+const isInlineTextType = (mimeType = '', fileName = '') => {
+  if (mimeType && INLINE_TEXT_MIME_TYPES.has(mimeType.toLowerCase())) {
+    return true;
+  }
+  const ext = getExtension(fileName);
+  return TEXT_EXTENSIONS.includes(ext);
+};
+
+const isImageType = (mimeType = '', fileName = '') => {
+  if (mimeType && mimeType.startsWith('image/')) {
+    return true;
+  }
+  const ext = getExtension(fileName);
+  return IMAGE_EXTENSIONS.includes(ext);
+};
+
 const FilesComponent = ({ files = [], canEdit, checkoutStatus }) => {
   const canUploadMore = canEdit && checkoutStatus === 'checked-out';
+  const [previewFile, setPreviewFile] = useState(null);
+  const [previewContent, setPreviewContent] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
 
   const openInNewTab = (url) => {
     if (!url) return;
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const closePreview = () => {
+    setPreviewFile(null);
+    setPreviewContent('');
+    setPreviewUrl('');
+    setPreviewLoading(false);
+    setPreviewError('');
+  };
+
+  const handleViewFile = async (file) => {
+    if (!file?.downloadUrl) {
+      return;
+    }
+
+    if (isImageType(file.mimeType, file.name)) {
+      closePreview();
+      setPreviewFile(file);
+      setPreviewUrl(file.downloadUrl);
+      return;
+    }
+
+    if (!isInlineTextType(file.mimeType, file.name)) {
+      openInNewTab(file.downloadUrl);
+      return;
+    }
+
+    closePreview();
+    setPreviewFile(file);
+    setPreviewLoading(true);
+    setPreviewError('');
+    setPreviewContent('');
+
+    try {
+      const response = await fetch(file.downloadUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to load file (${response.status})`);
+      }
+      const text = await response.text();
+      setPreviewContent(text);
+    } catch (error) {
+      setPreviewError(error.message || 'Unable to preview this file.');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   return (
@@ -34,7 +126,7 @@ const FilesComponent = ({ files = [], canEdit, checkoutStatus }) => {
         </div>
         {canUploadMore && (
           <span className="project-files__status">
-            Checked out by you — upload new files via the check-in form.
+            Checked out by you - upload new files via the check-in form.
           </span>
         )}
       </header>
@@ -90,7 +182,7 @@ const FilesComponent = ({ files = [], canEdit, checkoutStatus }) => {
                   <button
                     type="button"
                     className="project-files__button"
-                    onClick={() => openInNewTab(file.downloadUrl)}
+                    onClick={() => handleViewFile(file)}
                   >
                     View
                   </button>
@@ -107,8 +199,44 @@ const FilesComponent = ({ files = [], canEdit, checkoutStatus }) => {
           </div>
         </div>
       )}
+      {previewFile && (
+        <div className="project-files__preview-overlay" role="dialog" aria-modal="true">
+          <div className="project-files__preview">
+            <header className="project-files__preview-header">
+              <div>
+                <h4 className="project-files__preview-title">{previewFile.name}</h4>
+                <span className="project-files__preview-meta">
+                  {previewFile.mimeType || 'unknown'} - {formatBytes(previewFile.size)}
+                </span>
+              </div>
+              <button type="button" className="project-files__preview-close" onClick={closePreview}>
+                Close
+              </button>
+            </header>
+
+            <div className="project-files__preview-body">
+              {previewLoading && <div className="project-files__preview-status">Loading preview...</div>}
+              {previewError && (
+                <div className="project-files__preview-error">ERROR: {previewError}</div>
+              )}
+              {!previewLoading && !previewError && previewUrl && (
+                <div className="project-files__preview-media">
+                  <img src={previewUrl} alt={previewFile.name} />
+                </div>
+              )}
+              {!previewLoading && !previewError && !previewUrl && (
+                <pre className="project-files__preview-code">
+                  <code>{previewContent || 'This file is empty.'}</code>
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
 
 export default FilesComponent;
+
+

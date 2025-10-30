@@ -8,7 +8,7 @@ import ProjectList from '../components/ProjectList';
 import FriendsList from '../components/FriendsList';
 import CreateProject from '../components/CreateProject';
 
-const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
+const ProfilePage = ({ user, onLogout, onUserUpdate, theme, onToggleTheme }) => {
   const { userId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -130,7 +130,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
     );
   };
 
-  const handleProfileUpdate = async (updatedData) => {
+  const handleProfileUpdate = async (updatedPayload, options = {}) => {
     setSaveError('');
 
     const targetId = profileUser?.id || user?.id;
@@ -140,34 +140,41 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
     }
 
     try {
-        const response = await fetch(`/api/users/${targetId}`, {
+      const useFormData = updatedPayload instanceof FormData || options.useFormData;
+      const endpoint = useFormData ? `/api/users/${targetId}/profile` : `/api/users/${targetId}`;
+      const requestConfig = useFormData
+        ? {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updatedData),
-        });
-        const data = await response.json();
+            body: updatedPayload,
+          }
+        : {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedPayload),
+          };
 
-        if (response.ok && data.success) {
-            const viewerUpdate =
-              isOwnProfile && data.profile
-                ? { ...user, ...data.profile }
-                : user;
+      const response = await fetch(endpoint, requestConfig);
+      const data = await response.json();
 
-            setProfileUser(data.profile);
-            setIsEditing(false);
+      if (response.ok && data.success) {
+        const viewerUpdate =
+          isOwnProfile && data.profile
+            ? { ...user, ...data.profile }
+            : user;
 
-            if (isOwnProfile && data.profile && onUserUpdate && user) {
-              onUserUpdate(viewerUpdate);
-            }
+        setProfileUser(data.profile);
+        setIsEditing(false);
 
-            setFriendStatus(computeFriendStatus(viewerUpdate, data.profile));
-        } else {
-            setSaveError(data.message || 'Unable to save profile changes.');
+        if (isOwnProfile && data.profile && onUserUpdate && user) {
+          onUserUpdate(viewerUpdate);
         }
+
+        setFriendStatus(computeFriendStatus(viewerUpdate, data.profile));
+      } else {
+        setSaveError(data.message || 'Unable to save profile changes.');
+      }
     } catch (error) {
-        setSaveError('Network error during profile update. Please try again.');
+      setSaveError('Network error during profile update. Please try again.');
     }
   };
 
@@ -264,7 +271,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   if (loading || !profileUser) {
     return (
       <div className="min-h-screen bg-terminal-bg flex items-center justify-center">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
         <div className="text-terminal-text text-lg font-share-tech-mono">
           Loading user profile...<span className="cursor animate-blink">_</span>
         </div>
@@ -279,7 +286,7 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <main className="p-5 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-5 items-start">
           {/* Sidebar */}

@@ -1,7 +1,64 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import './CreateProject.css';
 
 const IMAGE_MAX_SIZE_MB = 5;
+const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
+
+const EXTENSION_TAG_MAP = {
+  js: ['javascript'],
+  jsx: ['javascript', 'react'],
+  ts: ['typescript'],
+  tsx: ['typescript', 'react'],
+  py: ['python'],
+  rb: ['ruby'],
+  java: ['java'],
+  cs: ['csharp'],
+  cpp: ['cpp'],
+  hpp: ['cpp'],
+  c: ['c'],
+  go: ['golang'],
+  rs: ['rust'],
+  php: ['php'],
+  swift: ['swift'],
+  kt: ['kotlin'],
+  m: ['objective-c'],
+  html: ['html'],
+  css: ['css'],
+  scss: ['css', 'sass'],
+  less: ['css'],
+  json: ['json'],
+  md: ['documentation'],
+  txt: ['notes'],
+  sql: ['database'],
+  sh: ['shell'],
+  ps1: ['powershell'],
+  yaml: ['config'],
+  yml: ['config'],
+  dockerfile: ['docker'],
+};
+
+const normaliseTag = (tag) => tag.replace(/^#+/, '').trim().toLowerCase();
+
+const getExtension = (filename = '') => {
+  if (!filename) return '';
+  const lower = filename.toLowerCase();
+  if (lower === 'dockerfile') return 'dockerfile';
+  const segments = lower.split('.');
+  return segments.length > 1 ? segments.pop() : '';
+};
+
+const collectTagsFromFiles = (files = []) => {
+  const tagSet = new Set();
+  files.forEach((file) => {
+    const ext = getExtension(file.name);
+    if (ext && EXTENSION_TAG_MAP[ext]) {
+      EXTENSION_TAG_MAP[ext].forEach((tag) => tagSet.add(tag));
+    } else if (ext) {
+      tagSet.add(ext);
+    }
+  });
+  return Array.from(tagSet);
+};
 
 const CreateProject = ({ user, onProjectCreated }) => {
   const [formData, setFormData] = useState({
@@ -18,6 +75,12 @@ const CreateProject = ({ user, onProjectCreated }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
+  const [isImageDragging, setIsImageDragging] = useState(false);
+  const [isFileDragging, setIsFileDragging] = useState(false);
+  const [detectedTags, setDetectedTags] = useState([]);
+
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -57,6 +120,17 @@ const CreateProject = ({ user, onProjectCreated }) => {
     };
   }, [imagePreview]);
 
+  useEffect(() => {
+    const tagCandidates = collectTagsFromFiles(selectedFiles);
+    setDetectedTags(tagCandidates);
+    if (tagCandidates.length && !formData.tags.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: tagCandidates.map((tag) => `#${tag}`).join(', '),
+      }));
+    }
+  }, [selectedFiles, formData.tags]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({
@@ -72,8 +146,7 @@ const CreateProject = ({ user, onProjectCreated }) => {
     }
   };
 
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
+  const handleSelectedImage = (file) => {
     if (!file) {
       setSelectedImage(null);
       if (imagePreview) {
@@ -83,7 +156,15 @@ const CreateProject = ({ user, onProjectCreated }) => {
       return;
     }
 
-    if (file.size > IMAGE_MAX_SIZE_MB * 1024 * 1024) {
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({
+        ...prev,
+        projectImage: 'Please upload a valid image file.',
+      }));
+      return;
+    }
+
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
       setErrors((prev) => ({
         ...prev,
         projectImage: `Image must be smaller than ${IMAGE_MAX_SIZE_MB}MB.`,
@@ -91,20 +172,91 @@ const CreateProject = ({ user, onProjectCreated }) => {
       return;
     }
 
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
-    setSelectedImage(file);
-    setImagePreview(URL.createObjectURL(file));
     setErrors((prev) => ({
       ...prev,
       projectImage: '',
     }));
+
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleFilesChange = (event) => {
-    const files = Array.from(event.target.files || []);
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    handleSelectedImage(file);
+  };
+
+  const handleImageDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsImageDragging(false);
+    const file = event.dataTransfer?.files?.[0];
+    handleSelectedImage(file);
+  };
+
+  const handleImageDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsImageDragging(true);
+  };
+
+  const handleImageDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsImageDragging(false);
+  };
+
+  const handleFilesChange = (files) => {
     setSelectedFiles(files);
+  };
+
+  const handleFilesInputChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    handleFilesChange(files);
+  };
+
+  const handleFilesDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsFileDragging(false);
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length) {
+      handleFilesChange(files);
+    }
+  };
+
+  const handleFilesDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsFileDragging(true);
+  };
+
+  const handleFilesDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsFileDragging(false);
+  };
+
+  const handleRemoveFile = (index) => {
+    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleTagSuggestionClick = (tag) => {
+    const existing = formData.tags
+      .split(/[,\s]+/)
+      .map(normaliseTag)
+      .filter(Boolean);
+    if (!existing.includes(tag)) {
+      const nextTags = [...existing, tag].map((value) => `#${value}`).join(', ');
+      setFormData((prev) => ({
+        ...prev,
+        tags: nextTags,
+      }));
+    }
   };
 
   const validateForm = () => {
@@ -144,6 +296,7 @@ const CreateProject = ({ user, onProjectCreated }) => {
     }));
     setSelectedFiles([]);
     setSelectedImage(null);
+    setDetectedTags([]);
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
       setImagePreview('');
@@ -205,9 +358,10 @@ const CreateProject = ({ user, onProjectCreated }) => {
     if (!selectedFiles.length) {
       return [];
     }
-    return selectedFiles.map((file) => ({
+    return selectedFiles.map((file, index) => ({
       name: file.name,
       size: file.size,
+      index,
     }));
   }, [selectedFiles]);
 
@@ -216,12 +370,12 @@ const CreateProject = ({ user, onProjectCreated }) => {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex += 1;
-    }
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
-  };
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+};
 
   return (
     <section className="project-form project-form--create">
@@ -317,6 +471,21 @@ const CreateProject = ({ user, onProjectCreated }) => {
             <p className="project-form__hint">
               Separate tags with commas or spaces. Example: #javascript, #react
             </p>
+            {detectedTags.length > 0 && (
+              <div className="project-form__tag-suggestions">
+                <span className="project-form__hint">Suggested:</span>
+                {detectedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="project-form__tag-suggestion"
+                    onClick={() => handleTagSuggestionClick(tag)}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="project-form__group">
@@ -336,47 +505,99 @@ const CreateProject = ({ user, onProjectCreated }) => {
           </div>
         </div>
 
-        <div className="project-form__grid">
+        <div className="project-form__grid project-form__grid--uploads">
           <div className="project-form__group">
             <label className="project-form__label" htmlFor="project-image">
               Project image (max {IMAGE_MAX_SIZE_MB}MB)
             </label>
-            <input
-              type="file"
-              id="project-image"
-              accept="image/*"
-              className="project-form__input project-form__input--file"
-              onChange={handleImageChange}
-            />
-            {errors.projectImage && <div className="project-form__error">{errors.projectImage}</div>}
-            {imagePreview && (
-              <div className="project-form__preview">
-                <span className="project-form__preview-label">Preview</span>
-                <img src={imagePreview} alt="Project preview" className="project-form__preview-image" />
+            <div
+              className={`project-form__dropzone ${isImageDragging ? 'project-form__dropzone--active' : ''}`}
+              onDragOver={handleImageDragOver}
+              onDragLeave={handleImageDragLeave}
+              onDrop={handleImageDrop}
+              role="presentation"
+            >
+              <input
+                type="file"
+                id="project-image"
+                ref={imageInputRef}
+                accept="image/*"
+                className="project-form__input project-form__input--file"
+                onChange={handleImageChange}
+              />
+              <div className="project-form__dropzone-content">
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Project preview" className="project-form__preview-image" />
+                ) : (
+                  <span className="project-form__hint">Drag &amp; drop image or click to browse</span>
+                )}
               </div>
-            )}
+              <button
+                type="button"
+                className="project-form__button project-form__button--ghost"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                Choose Image
+              </button>
+              {imagePreview && (
+                <button
+                  type="button"
+                  className="project-form__button project-form__button--ghost"
+                  onClick={handleResetImage}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {errors.projectImage && <div className="project-form__error">{errors.projectImage}</div>}
           </div>
 
           <div className="project-form__group">
             <label className="project-form__label" htmlFor="project-files">
               Project files (initial upload)
             </label>
-            <input
-              type="file"
-              id="project-files"
-              className="project-form__input project-form__input--file"
-              multiple
-              onChange={handleFilesChange}
-            />
+            <div
+              className={`project-form__dropzone project-form__dropzone--files ${isFileDragging ? 'project-form__dropzone--active' : ''}`}
+              onDragOver={handleFilesDragOver}
+              onDragLeave={handleFilesDragLeave}
+              onDrop={handleFilesDrop}
+              role="presentation"
+            >
+              <input
+                type="file"
+                id="project-files"
+                ref={fileInputRef}
+                className="project-form__input project-form__input--file"
+                multiple
+                onChange={handleFilesInputChange}
+              />
+              <div className="project-form__dropzone-content">
+                <span className="project-form__hint">Drag &amp; drop files or click to browse</span>
+              </div>
+              <button
+                type="button"
+                className="project-form__button project-form__button--ghost"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Select Files
+              </button>
+            </div>
             <p className="project-form__hint">
               Add starter code, documentation, or media assets. More files can be checked in later.
             </p>
             {selectedFilesSummary.length > 0 && (
               <div className="project-form__file-list">
                 {selectedFilesSummary.map((file) => (
-                  <div key={file.name} className="project-form__file-item">
+                  <div key={file.index} className="project-form__file-item">
                     <span className="project-form__file-name">{file.name}</span>
                     <span className="project-form__file-size">{formatFileSize(file.size)}</span>
+                    <button
+                      type="button"
+                      className="project-form__file-remove"
+                      onClick={() => handleRemoveFile(file.index)}
+                    >
+                      Remove
+                    </button>
                   </div>
                 ))}
               </div>
@@ -385,7 +606,7 @@ const CreateProject = ({ user, onProjectCreated }) => {
         </div>
 
         <button type="submit" className="project-form__submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating…' : 'Create Project'}
+          {isSubmitting ? 'Creating...' : 'Create Project'}
         </button>
       </form>
     </section>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Header from '../components/Header';
 
-const SearchResultsPage = ({ user, onLogout }) => {
+const SearchResultsPage = ({ user, onLogout, theme, onToggleTheme }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const term = searchParams.get('term') || '';
@@ -53,7 +53,7 @@ const SearchResultsPage = ({ user, onLogout }) => {
 
   return (
     <div className="bg-terminal-bg min-h-screen">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
 
       <main className="p-5 max-w-5xl mx-auto">
         <div className="mb-4 font-fira-code text-terminal-text">

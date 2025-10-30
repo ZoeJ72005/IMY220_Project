@@ -147,3 +147,26 @@
   font-size: 0.7rem;
   color: var(--terminal-text-secondary);
 }
+
+.search-input__result-score {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  color: var(--terminal-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.search-input__suggestion-status,
+.search-input__suggestion-error {
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.search-input__suggestion-status {
+  color: var(--terminal-text-secondary);
+}
+
+.search-input__suggestion-error {
+  color: var(--terminal-error);
+}

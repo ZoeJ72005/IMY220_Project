@@ -1,10 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/Header.css';
 import SearchInput from './SearchInput';
 
-const Header = ({ user, onLogout }) => {
+const Header = ({ user, onLogout, theme = 'dark', onToggleTheme }) => {
   const location = useLocation();
   const pendingRequests = user?.pendingFriendRequests?.length || 0;
 
@@ -13,6 +13,13 @@ const Header = ({ user, onLogout }) => {
       return location.pathname === '/home';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const themeLabel = theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE';
+  const handleThemeToggle = () => {
+    if (typeof onToggleTheme === 'function') {
+      onToggleTheme();
+    }
   };
 
   return (
@@ -54,6 +61,18 @@ const Header = ({ user, onLogout }) => {
           <SearchInput />
         </div>
         
+        <div className="nav-theme">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={handleThemeToggle}
+            aria-label="Toggle light and dark mode"
+          >
+            <span className="theme-toggle__icon">{theme === 'dark' ? '[moon]' : '[sun]'}</span>
+            <span className="theme-toggle__label">{themeLabel}</span>
+          </button>
+        </div>
+
         <div className="nav-user">
           <span className="user-info">
             USER: <span>{user.username}</span>
@@ -86,4 +105,5 @@ const Header = ({ user, onLogout }) => {
 };
 
 export default Header;
+
 

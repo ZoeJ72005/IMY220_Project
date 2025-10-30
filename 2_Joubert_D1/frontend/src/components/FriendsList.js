@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './FriendsList.css';
+import { resolveProfileImage } from '../utils/avatar';
 
 const FriendsList = ({ friends, isOwnProfile }) => {
   return (
@@ -28,7 +29,7 @@ const FriendsList = ({ friends, isOwnProfile }) => {
             <article key={friend.id} className="friends-list__card">
               <div className="friends-list__avatar-wrapper">
                 <img
-                  src={friend.profileImage || 'https://via.placeholder.com/96'}
+                  src={resolveProfileImage(friend.profileImage, friend.id || friend.username, 96)}
                   alt={`${friend.username} profile`}
                   className="friends-list__avatar"
                 />
