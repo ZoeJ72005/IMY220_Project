@@ -336,7 +336,13 @@ const updateUserById = async (id, update, options = {}) => {
         update,
         { returnDocument, upsert: !!options.upsert }
     );
-    return result.value;
+    if (result?.value) {
+        return result.value;
+    }
+
+    // Fallback: if the document matched but the driver did not return it,
+    // attempt to load the latest version explicitly before reporting failure.
+    return Users.findOne({ _id: objectId });
 };
 
 const deleteUserById = async (id) => {
@@ -1160,11 +1166,14 @@ app.patch('/api/admin/users/:id/role', async (req, res) => {
             }
         );
 
-        if (!updatedUser.value) {
+        const resolvedUserDoc = updatedUser.value
+            || (await Users.findOne({ _id: targetUserId }, { projection: ADMIN_USER_SUMMARY_FIELDS }));
+
+        if (!resolvedUserDoc) {
             return res.status(404).json({ success: false, message: 'Target user not found' });
         }
 
-        res.json({ success: true, user: mapAdminUserSummary(updatedUser.value) });
+        res.json({ success: true, user: mapAdminUserSummary(resolvedUserDoc) });
     } catch (error) {
         console.error('Admin update user role error:', error);
         const status = error.statusCode || 500;
