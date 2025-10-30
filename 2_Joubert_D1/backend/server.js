@@ -467,39 +467,88 @@ const buildAuthUserPayload = async (userId) => {
     };
 };
 
-const buildProfilePayload = async (userId) => {
+const buildProfilePayload = async (profileId, viewerId = null) => {
     if (!Projects) {
         return null;
     }
 
-    const basePayload = await buildAuthUserPayload(userId);
+    const profileObjectId = toObjectId(profileId);
+    if (!profileObjectId) {
+        return null;
+    }
+
+    const basePayload = await buildAuthUserPayload(profileObjectId);
     if (!basePayload) {
         return null;
     }
 
-    const userObjectId = toObjectId(userId);
+    const viewerObjectId = toObjectId(viewerId);
+    const viewerIdString = viewerObjectId ? viewerObjectId.toString() : null;
+    const isOwnProfile = viewerIdString && viewerIdString === basePayload.id;
+    const isFriend = basePayload.friends?.some((friend) => friend.id === viewerIdString) || false;
+    const relation = isOwnProfile ? 'self' : isFriend ? 'friend' : 'restricted';
+
     const projects = await Projects.find({
-        $or: [{ ownerId: userObjectId }, { members: userObjectId }],
+        $or: [{ ownerId: profileObjectId }, { members: profileObjectId }],
     }).toArray();
 
-    const projectSummaries = projects.map((projects) => {
-        const projectOwnerId = projects.ownerId ? projects.ownerId.toString() : null;
-        const isOwner = projectOwnerId === (userObjectId ? userObjectId.toString() : null);
+    const projectSummaries = projects.map((projectDoc) => {
+        const projectOwnerId = projectDoc.ownerId ? projectDoc.ownerId.toString() : null;
+        const isOwner = projectOwnerId === profileObjectId.toString();
 
         return {
-            id: projects._id.toString(),
-            name: projects.name,
-            description: projects.description,
+            id: projectDoc._id.toString(),
+            name: projectDoc.name,
+            description: projectDoc.description,
             role: isOwner ? 'owner' : 'member',
-            lastActivity: projects.lastActivity ? new Date(projects.lastActivity).toLocaleDateString() : '',
-            imageUrl: buildPublicUrl(projects.image),
+            lastActivity: projectDoc.lastActivity ? new Date(projectDoc.lastActivity).toLocaleDateString() : '',
+            imageUrl: buildPublicUrl(projectDoc.image),
         };
     });
 
-    return {
-        ...basePayload,
-        projects: projectSummaries,
+    const friendCount = basePayload.friends?.length || 0;
+    const projectCount = projectSummaries.length;
+
+    const profilePayload = {
+        id: basePayload.id,
+        username: basePayload.username,
+        fullName: basePayload.fullName,
+        profileImage: basePayload.profileImage,
+        bio: basePayload.bio || '',
+        joinDate: basePayload.joinDate,
+        relation,
+        isFriend,
+        friendCount,
+        projectCount,
+        projects: relation === 'restricted' ? [] : projectSummaries,
+        role: basePayload.role,
     };
+
+    if (relation === 'friend' || relation === 'self') {
+        profilePayload.email = basePayload.email;
+        profilePayload.location = basePayload.location;
+        profilePayload.company = basePayload.company;
+        profilePayload.website = basePayload.website;
+        profilePayload.languages = basePayload.languages;
+        profilePayload.friends = basePayload.friends;
+    } else {
+        profilePayload.email = '';
+        profilePayload.location = '';
+        profilePayload.company = '';
+        profilePayload.website = '';
+        profilePayload.languages = [];
+        profilePayload.friends = [];
+    }
+
+    if (relation === 'self') {
+        profilePayload.pendingFriendRequests = basePayload.pendingFriendRequests;
+        profilePayload.outgoingFriendRequests = basePayload.outgoingFriendRequests;
+    } else {
+        profilePayload.pendingFriendRequests = [];
+        profilePayload.outgoingFriendRequests = [];
+    }
+
+    return profilePayload;
 };
 
 const populateProjectDetail = async (projectId) => {
@@ -753,13 +802,14 @@ app.post('/api/auth/logout', (req, res) => {
 
 // GET Profile (View Own/Other users)
 app.get('/api/users/:id', async (req, res) => {
-    const userId = toObjectId(req.params.id);
-    if (!userId) {
+    const userObjectId = toObjectId(req.params.id);
+    if (!userObjectId) {
         return res.status(400).json({ success: false, message: 'Invalid user identifier' });
     }
 
     try {
-        const profile = await buildProfilePayload(userId);
+        const viewerId = req.query.viewerId ? toObjectId(req.query.viewerId) : null;
+        const profile = await buildProfilePayload(userObjectId, viewerId);
         if (!profile) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -794,7 +844,7 @@ app.put('/api/users/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const profile = await buildProfilePayload(userId);
+        const profile = await buildProfilePayload(userId, userId);
         res.json({ success: true, profile });
     } catch (error) {
         console.error('Profile update error:', error);
@@ -853,7 +903,7 @@ app.post('/api/users/:id/friend-requests', async (req, res) => {
 
         const [updatedRequester, updatedProfile] = await Promise.all([
             buildAuthUserPayload(requesterId),
-            buildProfilePayload(targetUserId),
+            buildProfilePayload(targetUserId, requesterId),
         ]);
 
         res.json({
@@ -902,7 +952,7 @@ app.post('/api/users/:id/friend-requests/:requesterId/accept', async (req, res) 
 
         const [updatedUser, updatedProfile] = await Promise.all([
             buildAuthUserPayload(currentUserId),
-            buildProfilePayload(requesterId),
+            buildProfilePayload(requesterId, currentUserId),
         ]);
 
         res.json({
@@ -933,7 +983,7 @@ app.post('/api/users/:id/friend-requests/:requesterId/decline', async (req, res)
 
         const [updatedUser, updatedProfile] = await Promise.all([
             buildAuthUserPayload(currentUserId),
-            buildProfilePayload(requesterId),
+            buildProfilePayload(requesterId, currentUserId),
         ]);
 
         res.json({
@@ -977,7 +1027,7 @@ app.delete('/api/users/:id/friends', async (req, res) => {
 
         const [updatedUser, updatedProfile] = await Promise.all([
             buildAuthUserPayload(currentUserObjectId),
-            buildProfilePayload(profileObjectId),
+            buildProfilePayload(profileObjectId, currentUserObjectId),
         ]);
 
         res.json({

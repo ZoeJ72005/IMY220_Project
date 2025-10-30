@@ -2,9 +2,10 @@ import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Feed from '../components/Feed';
+import PendingRequestsCard from '../components/PendingRequestsCard';
 
 
-const HomePage = ({ user, onLogout }) => {
+const HomePage = ({ user, onLogout, onUserUpdate }) => {
   const [feedType, setFeedType] = useState('local'); // 'local' or 'global'
   const navigate = useNavigate();
   const feedRef = useRef(null);
@@ -104,6 +105,8 @@ const HomePage = ({ user, onLogout }) => {
                 </button>
               </div>
             </div>
+
+            <PendingRequestsCard user={user} onUserUpdate={onUserUpdate} />
             
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 shadow-[0_0_10px_rgba(0,255,0,0.1)]">
               <h3 className="font-fira-code text-sm text-terminal-accent mb-4 border-b border-terminal-dim pb-2">&gt; SYSTEM_STATUS</h3>

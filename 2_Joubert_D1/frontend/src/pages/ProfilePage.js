@@ -75,7 +75,12 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
   const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
-        const response = await fetch(`/api/users/${userId}`);
+        const params = new URLSearchParams();
+        if (user?.id) {
+            params.set('viewerId', user.id);
+        }
+        const query = params.toString() ? `?${params.toString()}` : '';
+        const response = await fetch(`/api/users/${userId}${query}`);
         const data = await response.json();
         if (data.success) {
             setProfileUser(data.profile);
@@ -341,13 +346,25 @@ const ProfilePage = ({ user, onLogout, onUserUpdate }) => {
 
               {activeTab === 'projects' && (
                 <div key="projects" className="animate-fade-in">
-                  <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
+                  {profileUser.relation === 'restricted' ? (
+                    <div className="text-terminal-dim text-xs font-fira-code">
+                      Projects are private until you connect with this user.
+                    </div>
+                  ) : (
+                    <ProjectList projects={profileUser.projects} isOwnProfile={isOwnProfile} />
+                  )}
                 </div>
               )}
 
               {activeTab === 'friends' && (
                 <div key="friends" className="animate-fade-in">
-                  <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
+                  {profileUser.relation === 'restricted' ? (
+                    <div className="text-terminal-dim text-xs font-fira-code">
+                      Add this user to view their network.
+                    </div>
+                  ) : (
+                    <FriendsList friends={profileUser.friends} isOwnProfile={isOwnProfile} />
+                  )}
                 </div>
               )}
 

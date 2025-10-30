@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import './ProfileComponent.css';
 
 const ProfileComponent = ({
@@ -12,6 +11,10 @@ const ProfileComponent = ({
   onAcceptFriend,
   onDeclineFriend,
 }) => {
+  const relation = profile?.relation || (isOwnProfile ? 'self' : 'friend');
+  const isRestricted = relation === 'restricted';
+  const friendCount = profile?.friendCount ?? profile?.friends?.length ?? 0;
+
   const formatDate = (date) => {
     if (date instanceof Date) {
       return date.toLocaleDateString('en-US', {
@@ -115,34 +118,50 @@ const ProfileComponent = ({
 
       <section className="profile-component__card profile-component__card--grid">
         <h3 className="profile-component__card-title">&gt; Details</h3>
-        <dl className="profile-component__details">
-          {profile.location && (
-            <div className="profile-component__details-row">
-              <dt>Location</dt>
-              <dd>{profile.location}</dd>
-            </div>
-          )}
-          {profile.company && (
-            <div className="profile-component__details-row">
-              <dt>Company</dt>
-              <dd>{profile.company}</dd>
-            </div>
-          )}
-          {profile.website && (
-            <div className="profile-component__details-row">
-              <dt>Website</dt>
-              <dd>
-                <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                  {profile.website}
-                </a>
-              </dd>
-            </div>
-          )}
-          <div className="profile-component__details-row">
-            <dt>Email</dt>
-            <dd>{profile.email}</dd>
-          </div>
-        </dl>
+        {isRestricted ? (
+          <>
+            <dl className="profile-component__details">
+              <div className="profile-component__details-row">
+                <dt>Friends</dt>
+                <dd>{friendCount}</dd>
+              </div>
+            </dl>
+            <p className="profile-component__restricted-note">
+              Connect with this user to unlock their full profile details.
+            </p>
+          </>
+        ) : (
+          <dl className="profile-component__details">
+            {profile.location && (
+              <div className="profile-component__details-row">
+                <dt>Location</dt>
+                <dd>{profile.location}</dd>
+              </div>
+            )}
+            {profile.company && (
+              <div className="profile-component__details-row">
+                <dt>Company</dt>
+                <dd>{profile.company}</dd>
+              </div>
+            )}
+            {profile.website && (
+              <div className="profile-component__details-row">
+                <dt>Website</dt>
+                <dd>
+                  <a href={profile.website} target="_blank" rel="noopener noreferrer">
+                    {profile.website}
+                  </a>
+                </dd>
+              </div>
+            )}
+            {profile.email && (
+              <div className="profile-component__details-row">
+                <dt>Email</dt>
+                <dd>{profile.email}</dd>
+              </div>
+            )}
+          </dl>
+        )}
       </section>
 
       {profile.languages?.length > 0 && (
