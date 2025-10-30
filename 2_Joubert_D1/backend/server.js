@@ -1873,6 +1873,21 @@ app.post('/api/projects/:id/members', async (req, res) => {
     }
 });
 
+app.get('/api/projects/:id/discussion', async (req, res) => {
+    const projectId = toObjectId(req.params.id);
+    if (!projectId) {
+        return res.status(400).json({ success: false, message: 'Invalid project identifier for discussion' });
+    }
+
+    try {
+        const discussion = await getDiscussionMessages(projectId);
+        res.json({ success: true, discussion });
+    } catch (error) {
+        console.error('Discussion fetch error:', error);
+        res.status(500).json({ success: false, message: 'Server error loading discussion messages' });
+    }
+});
+
 app.delete('/api/projects/:id/members/:memberId', async (req, res) => {
     const projectId = toObjectId(req.params.id);
     const memberId = toObjectId(req.params.memberId);
