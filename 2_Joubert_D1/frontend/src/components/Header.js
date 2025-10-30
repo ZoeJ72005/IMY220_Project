@@ -18,22 +18,23 @@ const Header = ({ user, onLogout }) => {
   return (
     <header className="terminal-header-nav">
       <nav className="nav-container">
-        <div className="nav-brand">
-          <Link to="/home" className="brand-link">
-            <span className="brand-icon">&gt;_</span>
-            <span className="brand-text">C:CodeRepo</span>
-          </Link>
-        </div>
-        
-        <div className="nav-menu">
-          <Link 
-            to="/home" 
-            className={`nav-link ${isActivePath('/home') ? 'active' : ''}`}
-          >
-            &gt; HOME
-          </Link>
-          
-          <Link 
+        <div className="nav-inner">
+          <div className="nav-brand">
+            <Link to="/home" className="brand-link">
+              <span className="brand-icon">&gt;_</span>
+              <span className="brand-text">C:CodeRepo</span>
+            </Link>
+          </div>
+
+          <div className="nav-menu">
+            <Link 
+              to="/home" 
+              className={`nav-link ${isActivePath('/home') ? 'active' : ''}`}
+            >
+              &gt; HOME
+            </Link>
+            
+            <Link 
             to={`/profile/${user.id}`} 
             className={`nav-link ${isActivePath('/profile') ? 'active' : ''}`}
           >
@@ -48,26 +49,28 @@ const Header = ({ user, onLogout }) => {
               &gt; ADMIN
             </Link>
           )}
-          
-          <div className="nav-search">
-            <SearchInput />
           </div>
-          
-          <div className="nav-user">
-            <span className="user-info">
-              USER: {user.username}
-            </span>
-            {pendingRequests > 0 && (
-              <span className="user-alert text-terminal-warning text-xs">
-                REQUESTS: {pendingRequests}
+
+          <div className="nav-right">
+            <div className="nav-search">
+              <SearchInput />
+            </div>
+            <div className="nav-user">
+              <span className="user-info">
+                USER: <span className="user-name">{user.username}</span>
               </span>
-            )}
-            <button 
-              onClick={onLogout}
-              className="logout-btn terminal-button"
-            >
-              &gt; LOGOUT
-            </button>
+              {pendingRequests > 0 && (
+                <span className="nav-alert">
+                  REQUESTS: {pendingRequests}
+                </span>
+              )}
+              <button 
+                onClick={onLogout}
+                className="logout-btn terminal-button"
+              >
+                &gt; LOGOUT
+              </button>
+            </div>
           </div>
         </div>
       </nav>

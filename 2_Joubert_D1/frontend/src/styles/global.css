@@ -1,15 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
 
 :root {
-  --terminal-bg: #000000;
-  --terminal-text: #00ff00; /* Pure Green Text */
-  --terminal-accent: #00aa00; /* Slightly Dimmed Green */
-  --terminal-dim: #008800; /* Very Dim Green */
-  --terminal-error: #ff0000; /* Red for errors */
-  --terminal-warning: #ffff00; /* Yellow/Amber for warnings */
-  --terminal-border: #00ff00;
-  --terminal-input-bg: #001100;
-  --terminal-button-hover: #003300;
+  --terminal-bg: #0d0f0f;
+  --terminal-bg-alt: #131717;
+  --terminal-surface: #1c2121;
+  --terminal-text: #b5f5c9;
+  --terminal-accent: #5dff8c;
+  --terminal-dim: #7aa38a;
+  --terminal-muted: #889997;
+  --terminal-error: #ff5c5c;
+  --terminal-warning: #ffd966;
+  --terminal-border: rgba(93, 255, 140, 0.35);
+  --terminal-input-bg: rgba(19, 23, 23, 0.85);
+  --terminal-button-hover: rgba(24, 107, 67, 0.4);
 }
 
 * {
@@ -20,7 +23,7 @@
 
 body {
   font-family: 'Fira Code', monospace;
-  background-color: var(--terminal-bg);
+  background: radial-gradient(circle at top, #1d2524 0%, #090b0b 60%);
   color: var(--terminal-text);
   line-height: 1.4;
   overflow-x: hidden;
@@ -44,15 +47,13 @@ body {
 }
 
 .terminal-button {
-  /* Applying linear gradient hover effects directly using custom CSS 
-     because complex gradients/shadows are easier here than in pure Tailwind */
-  background: linear-gradient(135deg, rgba(0, 17, 0, 0.4), rgba(0, 17, 0, 0.2));
+  background: linear-gradient(135deg, rgba(15, 40, 30, 0.7), rgba(12, 30, 24, 0.4));
   color: var(--terminal-text);
-  border: 2px solid var(--terminal-text);
+  border: 1px solid var(--terminal-border);
   font-family: 'Fira Code', monospace;
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: 6px;
+  border-radius: 8px;
   position: relative;
   overflow: hidden;
   /* Tailwind classes handle padding, font-size, and width based on context */
@@ -70,12 +71,12 @@ body {
 }
 
 .terminal-button:hover {
-  background: linear-gradient(135deg, rgba(0, 25, 0, 0.6), rgba(0, 25, 0, 0.4));
+  background: linear-gradient(135deg, rgba(24, 58, 45, 0.8), rgba(15, 36, 28, 0.6));
   box-shadow: 
-    0 0 20px var(--terminal-text),
-    inset 0 0 20px rgba(0, 255, 0, 0.1);
-  border-color: var(--terminal-accent);
-  color: var(--terminal-accent);
+    0 0 18px rgba(93, 255, 140, 0.25),
+    inset 0 0 10px rgba(93, 255, 140, 0.18);
+  border-color: rgba(93, 255, 140, 0.6);
+  color: #e9fff0;
   transform: translateY(-1px);
 }
 
@@ -92,15 +93,17 @@ body {
 
 .terminal-input {
   background-color: var(--terminal-input-bg);
-  border: 1px solid var(--terminal-text);
+  border: 1px solid rgba(93, 255, 140, 0.25);
   color: var(--terminal-text);
   font-family: 'Fira Code', monospace;
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .terminal-input:focus {
   outline: none;
-  box-shadow: 0 0 10px var(--terminal-text);
-  border-color: var(--terminal-accent);
+  box-shadow: 0 0 12px rgba(93, 255, 140, 0.28);
+  border-color: rgba(93, 255, 140, 0.55);
 }
 /* Removed individual form classes as Tailwind handles them inline */
 
